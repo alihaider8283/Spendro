@@ -6,7 +6,6 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -41,7 +40,7 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
   const activeSlide = slides[activeIndex];
   const isLastSlide = activeIndex === slides.length - 1;
 
-  const illustrationSize = useMemo(() => Math.min(width - 64, 600), [width]);
+  const illustrationSize = useMemo(() => Math.min(width * 0.55, 220), [width]);
 
   const completeOnboarding = useCallback(async () => {
     if (isSaving) {
@@ -66,11 +65,11 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
   }, [completeOnboarding, isLastSlide]);
 
   return (
-    <SafeAreaView style={styles.screen}>
+    <ThemedView style={styles.screen}>
       <ThemedView style={styles.header}>
         <ThemedView style={styles.brand}>
           <ThemedView style={styles.brandIcon}>
-            <Ionicons name="sparkles-outline" size={27} color="#FFFFFF" />
+            <Ionicons name="sparkles-outline" size={18} color="#FFFFFF" />
           </ThemedView>
           <ThemedText type="title" style={styles.brandText}>Spendro</ThemedText>
         </ThemedView>
@@ -118,7 +117,7 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
           </View>
           <View style={styles.cameraBadgeWrap}>
             <View style={styles.cameraBadge}>
-              <Ionicons name={activeSlide.icon} size={36} color="#FFFFFF" />
+              <Ionicons name={activeSlide.icon} size={22} color="#FFFFFF" />
             </View>
           </View>
         </ThemedView>
@@ -139,7 +138,7 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
             (pressed || isSaving) && styles.nextButtonPressed,
           ]}>
           <ThemedText type="smallBold" style={styles.nextButtonText}>{isLastSlide ? 'Get Started' : 'Next'}</ThemedText>
-          <Ionicons name="arrow-forward" size={26} color="#FFFFFF" />
+          <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
         </Pressable>
 
         <View style={styles.pagination}>
@@ -151,38 +150,38 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
           ))}
         </View>
       </ThemedView>
-    </SafeAreaView>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    // backgroundColor: '#FFFFFF',
     paddingHorizontal: Spacing.four,
   },
   header: {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingTop: Spacing.three,
+    paddingTop: Spacing.five,
   },
   brand: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 14,
+    gap: 10,
   },
   brandIcon: {
     alignItems: 'center',
     backgroundColor: '#2F7DF6',
-    borderRadius: 18,
-    height: 56,
+    borderRadius: 12,
+    height: 38,
     justifyContent: 'center',
-    width: 56,
+    width: 38,
   },
   brandText: {
     color: '#080A0F',
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: '800',
   },
   skipButton: {
@@ -190,7 +189,7 @@ const styles = StyleSheet.create({
   },
   skipText: {
     color: '#71717A',
-    fontSize: 25,
+    fontSize: 16,
     fontWeight: '700',
   },
   body: {
@@ -201,97 +200,97 @@ const styles = StyleSheet.create({
   },
   illustration: {
     backgroundColor: '#2F7DF6',
-    borderRadius: 48,
-    maxHeight: 600,
-    maxWidth: 600,
+    borderRadius: 36,
+    maxHeight: 280,
+    maxWidth: 280,
     overflow: 'visible',
   },
   backgroundCircleTop: {
     backgroundColor: 'rgba(255,255,255,0.13)',
-    borderRadius: 140,
-    height: 280,
+    borderRadius: 999,
+    height: '90%',
     position: 'absolute',
-    right: -24,
-    top: -4,
-    width: 280,
+    right: '-10%',
+    top: '-5%',
+    width: '90%',
   },
   backgroundCircleBottom: {
     backgroundColor: 'rgba(255,255,255,0.13)',
-    borderRadius: 170,
-    bottom: -96,
-    height: 340,
-    left: -86,
+    borderRadius: 999,
+    bottom: '-30%',
+    height: '110%',
+    left: '-30%',
     position: 'absolute',
-    width: 340,
+    width: '110%',
   },
   receiptCard: {
     alignSelf: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: 28,
-    marginTop: '31%',
-    padding: Spacing.four,
-    width: '53%',
+    borderRadius: 16,
+    marginTop: '25%',
+    padding: Spacing.three,
+    width: '60%',
   },
   receiptHeader: {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 14,
+    marginBottom: 10,
   },
   receiptTitleLine: {
     backgroundColor: '#D4D4D8',
     borderRadius: 8,
-    height: 14,
+    height: 8,
     width: '42%',
   },
   receiptDot: {
     backgroundColor: '#2F7DF6',
-    borderRadius: 8,
-    height: 16,
-    width: 16,
+    borderRadius: 5,
+    height: 10,
+    width: 10,
   },
   receiptLineWide: {
     backgroundColor: '#F1F1F3',
     borderRadius: 8,
-    height: 12,
-    marginBottom: 14,
+    height: 6,
+    marginBottom: 8,
     width: '100%',
   },
   receiptLineMedium: {
     backgroundColor: '#F1F1F3',
     borderRadius: 8,
-    height: 12,
-    marginBottom: 20,
+    height: 6,
+    marginBottom: 12,
     width: '66%',
   },
   receiptDivider: {
     borderStyle: 'dashed',
     borderTopColor: '#DADDE3',
     borderTopWidth: 1.5,
-    marginBottom: 20,
+    marginBottom: 12,
   },
   receiptRow: {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 14,
+    marginBottom: 8,
   },
   receiptLineSmall: {
     backgroundColor: '#F1F1F3',
     borderRadius: 8,
-    height: 12,
+    height: 6,
     width: '38%',
   },
   receiptLineMidSmall: {
     backgroundColor: '#F1F1F3',
     borderRadius: 8,
-    height: 12,
+    height: 6,
     width: '45%',
   },
   receiptAmountLine: {
     backgroundColor: '#C4C4C8',
     borderRadius: 8,
-    height: 12,
+    height: 6,
     width: '25%',
   },
   receiptFooter: {
@@ -303,48 +302,49 @@ const styles = StyleSheet.create({
   receiptDarkPill: {
     backgroundColor: '#575757',
     borderRadius: 8,
-    height: 14,
+    height: 8,
     width: '32%',
   },
   receiptBluePill: {
     backgroundColor: '#2F7DF6',
     borderRadius: 8,
-    height: 14,
+    height: 8,
     width: '38%',
   },
   cameraBadgeWrap: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 32,
-    bottom: -22,
-    padding: 14,
+    borderRadius: 999,
+    bottom: -12,
+    padding: 8,
     position: 'absolute',
-    right: -22,
+    right: -12,
   },
   cameraBadge: {
     alignItems: 'center',
     backgroundColor: '#2F7DF6',
-    borderRadius: 22,
-    height: 76,
+    borderRadius: 999,
+    height: 48,
     justifyContent: 'center',
-    width: 76,
+    width: 48,
   },
   copy: {
     alignItems: 'center',
-    marginTop: Spacing.six,
+    marginTop: Spacing.four,
     maxWidth: 620,
+    paddingHorizontal: Spacing.two,
   },
   title: {
     color: '#080A0F',
-    fontSize: 32,
-    fontWeight: '900',
-    letterSpacing: 0,
-    marginBottom: Spacing.three,
+    fontSize: 24,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+    marginBottom: Spacing.two,
     textAlign: 'center',
   },
   bodyText: {
     color: '#6F6F7B',
-    fontSize: 20,
-    lineHeight: 29,
+    fontSize: 15,
+    lineHeight: 22,
     maxWidth: 620,
     textAlign: 'center',
   },
@@ -354,38 +354,38 @@ const styles = StyleSheet.create({
   nextButton: {
     alignItems: 'center',
     backgroundColor: '#2F7DF6',
-    borderRadius: 18,
+    borderRadius: 14,
     flexDirection: 'row',
-    gap: 12,
-    height: 64,
+    gap: 8,
+    height: 50,
     justifyContent: 'center',
-    marginBottom: Spacing.five,
+    marginBottom: Spacing.four,
   },
   nextButtonPressed: {
     opacity: 0.82,
   },
   nextButtonText: {
     color: '#FFFFFF',
-    fontSize: 25,
-    fontWeight: '800',
+    fontSize: 16,
+    fontWeight: '700',
   },
   pagination: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 10,
+    gap: 8,
     justifyContent: 'center',
   },
   dot: {
-    height: 14,
+    height: 8,
   },
   activeDot: {
     backgroundColor: '#2F7DF6',
-    borderRadius: 8,
-    width: 45,
+    borderRadius: 4,
+    width: 24,
   },
   inactiveDot: {
     backgroundColor: '#EFEFF1',
-    borderRadius: 7,
-    width: 14,
+    borderRadius: 4,
+    width: 8,
   },
 });
