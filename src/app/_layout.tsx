@@ -3,7 +3,7 @@ import { Colors, Spacing } from '@/constants/theme';
 import { getOnboardingComplete, setOnboardingComplete } from '@/services/onboardingService';
 import { useAuthStore } from '@/store/authStore';
 import { Ionicons } from '@expo/vector-icons';
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider, type ErrorBoundaryProps } from 'expo-router';
+import { DarkTheme, DefaultTheme, Redirect, Stack, ThemeProvider, type ErrorBoundaryProps } from 'expo-router';
 import { TabList, Tabs, TabSlot, TabTrigger, type TabTriggerSlotProps } from 'expo-router/ui';
 import { useCallback, useEffect, useState, type ComponentProps } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native';
@@ -44,7 +44,7 @@ export default function RootLayout() {
   const colors = Colors[theme];
   const primaryColor = '#208AEF';
   const inactiveTabColor = '#73717D';
-  
+
   const { isAuthenticated, isLoading: authLoading, initializeAuth } = useAuthStore();
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<boolean | null>(null);
 
@@ -60,7 +60,6 @@ export default function RootLayout() {
     async function loadOnboardingStatus() {
       try {
         const isComplete = await getOnboardingComplete();
-
         if (isMounted) {
           setHasCompletedOnboarding(isComplete);
         }
@@ -83,67 +82,84 @@ export default function RootLayout() {
     setHasCompletedOnboarding(true);
   }, []);
 
+  if (authLoading || hasCompletedOnboarding === null) {
+    return (
+      <SafeAreaView
+        style={[styles.loadingScreen, { backgroundColor: colors.background }]}
+        edges={['bottom', 'left', 'right', 'top']}>
+        <ActivityIndicator color={primaryColor} size="large" />
+      </SafeAreaView>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <ThemeProvider value={scheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        </Stack>
+        <Redirect href="/(auth)/auth" />
+      </ThemeProvider>
+    );
+  }
+
+  if (!hasCompletedOnboarding) {
+    return (
+      <ThemeProvider value={scheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <OnboardingScreen onDone={handleOnboardingDone} />
+      </ThemeProvider>
+    );
+  }
+
   return (
     <ThemeProvider value={scheme === 'dark' ? DarkTheme : DefaultTheme}>
-      {authLoading || hasCompletedOnboarding === null ? (
-        <SafeAreaView
-          style={[styles.loadingScreen, { backgroundColor: colors.background }]}
-          edges={['bottom', 'left', 'right', 'top']}>
-          <ActivityIndicator color={primaryColor} size="large" />
-        </SafeAreaView>
-      ) : !isAuthenticated ? (
-        <Stack screenOptions={{ headerShown: false }} />
-      ) : !hasCompletedOnboarding ? (
-        <OnboardingScreen onDone={handleOnboardingDone} />
-      ) : (
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['bottom']}>
-          <Tabs>
-            <TabSlot style={styles.tabSlot} />
-            <TabList style={[styles.tabBar, { backgroundColor: colors.backgroundElement }]}>            
-              <TabTrigger name="index" href="/" asChild>
-                <TabBarItem
-                  icon="home-outline"
-                  label="Home"
-                  activeColor={primaryColor}
-                  inactiveColor={inactiveTabColor}
-                />
-              </TabTrigger>
-              <TabTrigger name="scan" href="/scan" asChild>
-                <TabBarItem
-                  icon="camera-outline"
-                  label="Scan"
-                  activeColor={primaryColor}
-                  inactiveColor={inactiveTabColor}
-                />
-              </TabTrigger>
-              <TabTrigger name="analytics" href="/analytics" asChild>
-                <TabBarItem
-                  icon="bar-chart-outline"
-                  label="Analytics"
-                  activeColor={primaryColor}
-                  inactiveColor={inactiveTabColor}
-                />
-              </TabTrigger>
-              <TabTrigger name="budget" href="/budget" asChild>
-                <TabBarItem
-                  icon="alert-circle-outline"
-                  label="Budget"
-                  activeColor={primaryColor}
-                  inactiveColor={inactiveTabColor}
-                />
-              </TabTrigger>
-              <TabTrigger name="settings" href="/settings" asChild>
-                <TabBarItem
-                  icon="settings-outline"
-                  label="Settings"
-                  activeColor={primaryColor}
-                  inactiveColor={inactiveTabColor}
-                />
-              </TabTrigger>
-            </TabList>
-          </Tabs>
-        </SafeAreaView>
-      )}
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['bottom']}>
+        <Tabs>
+          <TabSlot style={styles.tabSlot} />
+          <TabList style={[styles.tabBar, { backgroundColor: colors.backgroundElement }]}>
+            <TabTrigger name="index" href="/" asChild>
+              <TabBarItem
+                icon="home-outline"
+                label="Home"
+                activeColor={primaryColor}
+                inactiveColor={inactiveTabColor}
+              />
+            </TabTrigger>
+            <TabTrigger name="scan" href="/scan" asChild>
+              <TabBarItem
+                icon="camera-outline"
+                label="Scan"
+                activeColor={primaryColor}
+                inactiveColor={inactiveTabColor}
+              />
+            </TabTrigger>
+            <TabTrigger name="analytics" href="/analytics" asChild>
+              <TabBarItem
+                icon="bar-chart-outline"
+                label="Analytics"
+                activeColor={primaryColor}
+                inactiveColor={inactiveTabColor}
+              />
+            </TabTrigger>
+            <TabTrigger name="budget" href="/budget" asChild>
+              <TabBarItem
+                icon="alert-circle-outline"
+                label="Budget"
+                activeColor={primaryColor}
+                inactiveColor={inactiveTabColor}
+              />
+            </TabTrigger>
+            <TabTrigger name="settings" href="/settings" asChild>
+              <TabBarItem
+                icon="settings-outline"
+                label="Settings"
+                activeColor={primaryColor}
+                inactiveColor={inactiveTabColor}
+              />
+            </TabTrigger>
+          </TabList>
+        </Tabs>
+      </SafeAreaView>
     </ThemeProvider>
   );
 }

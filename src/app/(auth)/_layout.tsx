@@ -9,11 +9,10 @@ export default function AuthLayout() {
       <Stack
         screenOptions={{
           headerShown: false,
-          animationEnabled: true,
         }}
+        initialRouteName="auth"
       >
-        <Stack.Screen name="login" />
-        <Stack.Screen name="signup" />
+        <Stack.Screen name="auth" />
       </Stack>
     </ThemeProvider>
   );

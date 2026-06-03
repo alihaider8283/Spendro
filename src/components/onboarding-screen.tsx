@@ -3,12 +3,13 @@ import { useCallback, useMemo, useState } from 'react';
 import {
   Pressable,
   StyleSheet,
-  Text,
   useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 
 type OnboardingScreenProps = {
@@ -66,25 +67,25 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
 
   return (
     <SafeAreaView style={styles.screen}>
-      <View style={styles.header}>
-        <View style={styles.brand}>
-          <View style={styles.brandIcon}>
+      <ThemedView style={styles.header}>
+        <ThemedView style={styles.brand}>
+          <ThemedView style={styles.brandIcon}>
             <Ionicons name="sparkles-outline" size={27} color="#FFFFFF" />
-          </View>
-          <Text style={styles.brandText}>ExpenseAI</Text>
-        </View>
+          </ThemedView>
+          <ThemedText type="title" style={styles.brandText}>Spendro</ThemedText>
+        </ThemedView>
         <Pressable
           accessibilityRole="button"
           disabled={isSaving}
           hitSlop={12}
           onPress={completeOnboarding}
           style={styles.skipButton}>
-          <Text style={styles.skipText}>Skip</Text>
+          <ThemedText type="smallBold" style={styles.skipText}>Skip</ThemedText>
         </Pressable>
-      </View>
+      </ThemedView>
 
-      <View style={styles.body}>
-        <View
+      <ThemedView style={styles.body}>
+        <ThemedView
           style={[
             styles.illustration,
             {
@@ -120,15 +121,15 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
               <Ionicons name={activeSlide.icon} size={36} color="#FFFFFF" />
             </View>
           </View>
-        </View>
+        </ThemedView>
 
-        <View style={styles.copy}>
-          <Text style={styles.title}>{activeSlide.title}</Text>
-          <Text style={styles.bodyText}>{activeSlide.body}</Text>
-        </View>
-      </View>
+        <ThemedView style={styles.copy}>
+          <ThemedText type="title" style={styles.title}>{activeSlide.title}</ThemedText>
+          <ThemedText type="subtitle" style={styles.bodyText}>{activeSlide.body}</ThemedText>
+        </ThemedView>
+      </ThemedView>
 
-      <View style={styles.footer}>
+      <ThemedView style={styles.footer}>
         <Pressable
           accessibilityRole="button"
           disabled={isSaving}
@@ -137,7 +138,7 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
             styles.nextButton,
             (pressed || isSaving) && styles.nextButtonPressed,
           ]}>
-          <Text style={styles.nextButtonText}>{isLastSlide ? 'Get Started' : 'Next'}</Text>
+          <ThemedText type="smallBold" style={styles.nextButtonText}>{isLastSlide ? 'Get Started' : 'Next'}</ThemedText>
           <Ionicons name="arrow-forward" size={26} color="#FFFFFF" />
         </Pressable>
 
@@ -149,7 +150,7 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
             />
           ))}
         </View>
-      </View>
+      </ThemedView>
     </SafeAreaView>
   );
 }
