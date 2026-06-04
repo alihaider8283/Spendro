@@ -92,6 +92,14 @@ export default function RootLayout() {
     );
   }
 
+  if (!hasCompletedOnboarding) {
+    return (
+      <ThemeProvider value={scheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <OnboardingScreen onDone={handleOnboardingDone} />
+      </ThemeProvider>
+    );
+  }
+
   if (!isAuthenticated) {
     return (
       <ThemeProvider value={scheme === 'dark' ? DarkTheme : DefaultTheme}>
@@ -103,13 +111,6 @@ export default function RootLayout() {
     );
   }
 
-  if (!hasCompletedOnboarding) {
-    return (
-      <ThemeProvider value={scheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <OnboardingScreen onDone={handleOnboardingDone} />
-      </ThemeProvider>
-    );
-  }
 
   return (
     <ThemeProvider value={scheme === 'dark' ? DarkTheme : DefaultTheme}>

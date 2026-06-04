@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1021090607250",
+    "project_id": "spendro-a19a6",
+    "storage_bucket": "spendro-a19a6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1021090607250:android:bac5b8192ac41be859b64b",
+        "android_client_info": {
+          "package_name": "com.app.spendro"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA6qLMvEkC2PeiB5-9lDi0MayydBAE-4Qc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
