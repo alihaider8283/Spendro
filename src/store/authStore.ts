@@ -1,34 +1,28 @@
+import { authService } from '@/services/authService';
 import { create } from 'zustand';
 
 export interface AuthState {
   isAuthenticated: boolean;
   user: { id: string; email: string; name: string } | null;
   isLoading: boolean;
+  authListenerUnsubscribe: (() => void) | null;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<void>;
   logout: () => Promise<void>;
   initializeAuth: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   isAuthenticated: false,
   user: null,
   isLoading: true,
+  authListenerUnsubscribe: null,
 
   login: async (email: string, password: string) => {
     try {
       set({ isLoading: true });
-      // TODO: Call your API endpoint
-      // const response = await authService.login(email, password);
-      set({
-        isAuthenticated: true,
-        user: {
-          id: '1',
-          email,
-          name: email.split('@')[0],
-        },
-        isLoading: false,
-      });
+      await authService.login(email, password);
+      // State updates automatically when the onAuthStateChanged listener fires
     } catch (error) {
       set({ isLoading: false });
       throw error;
@@ -38,17 +32,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   signup: async (email: string, password: string, name: string) => {
     try {
       set({ isLoading: true });
-      // TODO: Call your API endpoint
-      // const response = await authService.signup(email, password, name);
-      set({
-        isAuthenticated: true,
-        user: {
-          id: '1',
-          email,
-          name,
-        },
-        isLoading: false,
-      });
+      await authService.signup(email, password, name);
+      // State updates automatically when the onAuthStateChanged listener fires
     } catch (error) {
       set({ isLoading: false });
       throw error;
@@ -58,13 +43,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   logout: async () => {
     try {
       set({ isLoading: true });
-      // TODO: Call your API endpoint
-      // await authService.logout();
-      set({
-        isAuthenticated: false,
-        user: null,
-        isLoading: false,
-      });
+      await authService.logout();
+      // State updates automatically when the onAuthStateChanged listener fires
     } catch (error) {
       set({ isLoading: false });
       throw error;
@@ -73,13 +53,33 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   initializeAuth: async () => {
     try {
-      // TODO: Check if user is already authenticated (from secure storage or API)
-      // For now, default to not authenticated
-      set({
-        isAuthenticated: false,
-        user: null,
-        isLoading: false,
+      // Unsubscribe from any previous listener before creating a new one
+      const { authListenerUnsubscribe } = get();
+      if (authListenerUnsubscribe) {
+        authListenerUnsubscribe();
+      }
+
+      const unsubscribe = authService.subscribeToAuthChanges((firebaseUser) => {
+        if (firebaseUser) {
+          set({
+            isAuthenticated: true,
+            user: {
+              id: firebaseUser.uid,
+              email: firebaseUser.email || '',
+              name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || '',
+            },
+            isLoading: false,
+          });
+        } else {
+          set({
+            isAuthenticated: false,
+            user: null,
+            isLoading: false,
+          });
+        }
       });
+
+      set({ authListenerUnsubscribe: unsubscribe });
     } catch (error) {
       set({ isLoading: false });
       throw error;

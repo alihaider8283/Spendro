@@ -12,6 +12,7 @@ interface AuthTextInputProps extends Omit<ComponentProps<typeof TextInput>, 'sty
   showPassword?: boolean;
   onTogglePassword?: () => void;
   helperText?: string;
+  error?: string;
 }
 
 export function AuthTextInput({
@@ -21,6 +22,7 @@ export function AuthTextInput({
   showPassword,
   onTogglePassword,
   helperText,
+  error,
   ...props
 }: AuthTextInputProps) {
   const scheme = useColorScheme();
@@ -31,7 +33,7 @@ export function AuthTextInput({
       <ThemedText type="smallBold" style={styles.label}>
         {label}
       </ThemedText>
-      <ThemedView style={[styles.inputContainer, { borderColor: colors.backgroundElement }]}>
+      <ThemedView style={[styles.inputContainer, { borderColor: error ? '#EF4444' : colors.backgroundElement }]}>
         <Ionicons name={iconName} size={20} color={colors.textSecondary} style={styles.inputIcon} />
         <TextInput
           style={[styles.input, { color: colors.text }]}
@@ -48,11 +50,15 @@ export function AuthTextInput({
           </Pressable>
         )}
       </ThemedView>
-      {helperText && (
+      {error ? (
+        <ThemedText type="small" style={[styles.helperText, { color: '#EF4444' }]}>
+          {error}
+        </ThemedText>
+      ) : helperText ? (
         <ThemedText type="small" themeColor="textSecondary" style={styles.helperText}>
           {helperText}
         </ThemedText>
-      )}
+      ) : null}
     </ThemedView>
   );
 }

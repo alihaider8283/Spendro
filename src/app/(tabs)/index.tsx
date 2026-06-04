@@ -51,7 +51,7 @@ export default function HomeScreen() {
 
         <View style={[styles.alertCard, { backgroundColor: colors.backgroundElement }]}> 
           <Text style={[styles.alertTitle, { color: colors.text }]}>Budget Alert</Text>
-          <Text style={[styles.alertBody, { color: colors.textSecondary }]}>You've used 81% of your monthly budget. $652 remaining.</Text>
+          <Text style={[styles.alertBody, { color: colors.textSecondary }]}>{"You've used 81% of your monthly budget. $652 remaining."}</Text>
         </View>
 
         <View style={[styles.sectionCard, { backgroundColor: colors.backgroundElement }]}> 

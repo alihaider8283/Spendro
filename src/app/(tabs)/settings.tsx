@@ -1,0 +1,527 @@
+import { Colors, Spacing } from '@/constants/theme';
+import { useAuthStore } from '@/store/authStore';
+import { useSettingsStore } from '@/store/settingsStore';
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { Ionicons } from '@expo/vector-icons';
+import React from 'react';
+import {
+  Alert,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  useColorScheme,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+export default function SettingsScreen() {
+  const scheme = useColorScheme();
+  const theme = scheme === 'dark' ? 'dark' : 'light';
+  const colors = Colors[theme];
+  const primaryColor = '#3369F6';
+
+  // Auth Store details
+  const { user, logout } = useAuthStore();
+
+  // Settings Store details
+  const {
+    themeMode,
+    aiAutoCategorization,
+    notifications,
+    currency,
+    setThemeMode,
+    setAiAutoCategorization,
+    setNotifications,
+    setCurrency,
+  } = useSettingsStore();
+
+  // Generate initials for the profile picture placeholder
+  const getInitials = (name?: string) => {
+    if (!name) return 'S';
+    const parts = name.trim().split(' ');
+    if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+    return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+  };
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Log Out',
+      'Are you sure you want to log out of Spendro?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Log Out',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await logout();
+            } catch (error) {
+              console.error('Failed to log out:', error);
+              Alert.alert('Error', 'An error occurred while logging out. Please try again.');
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
+  const toggleDarkMode = (value: boolean) => {
+    setThemeMode(value ? 'dark' : 'light');
+  };
+
+  return (
+    <SafeAreaView style={[styles.screen, { backgroundColor: colors.background }]} edges={['top']}>
+      {/* Header */}
+      <View style={styles.header}>
+        <ThemedText type="subtitle" style={styles.headerTitle}>
+          Settings
+        </ThemedText>
+        <Pressable
+          style={[styles.iconButton, { backgroundColor: colors.backgroundElement }]}
+          android_ripple={{ color: colors.backgroundSelected, borderless: true }}
+        >
+          <Ionicons name="notifications-outline" size={22} color={colors.text} />
+        </Pressable>
+      </View>
+
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Profile Card */}
+        <Pressable
+          style={[styles.profileCard, { backgroundColor: colors.backgroundElement }]}
+          android_ripple={{ color: colors.backgroundSelected }}
+        >
+          <View style={[styles.profileAvatar, { backgroundColor: primaryColor }]}>
+            <ThemedText style={styles.avatarText}>{getInitials(user?.name)}</ThemedText>
+          </View>
+          <View style={styles.profileDetails}>
+            <ThemedText style={styles.profileName}>{user?.name || 'User'}</ThemedText>
+            <ThemedText style={[styles.profileEmail, { color: colors.textSecondary }]}>
+              {user?.email || 'user@spendro.com'}
+            </ThemedText>
+            <View style={[styles.premiumBadge, { backgroundColor: theme === 'dark' ? '#1A2F4C' : '#EBF3FF' }]}>
+              <Ionicons name="sparkles" size={12} color={theme === 'dark' ? '#3A96FF' : '#3369F6'} style={styles.premiumIcon} />
+              <ThemedText style={[styles.premiumText, { color: theme === 'dark' ? '#3A96FF' : '#3369F6' }]}>
+                Premium
+              </ThemedText>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+        </Pressable>
+
+        {/* ACCOUNT SECTION */}
+        <View style={styles.sectionContainer}>
+          <ThemedText style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+            ACCOUNT
+          </ThemedText>
+          <View style={[styles.listContainer, { backgroundColor: colors.backgroundElement }]}>
+            {/* Personal Information */}
+            <Pressable
+              style={({ pressed }) => [styles.listItem, pressed && { backgroundColor: colors.backgroundSelected }]}
+            >
+              <View style={styles.listItemLeft}>
+                <View style={[styles.itemIconContainer, { backgroundColor: colors.background }]}>
+                  <Ionicons name="person-outline" size={20} color={colors.textSecondary} />
+                </View>
+                <ThemedText style={styles.listItemText}>Personal Information</ThemedText>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+            </Pressable>
+
+            <View style={[styles.divider, { backgroundColor: colors.background }]} />
+
+            {/* Payment Methods */}
+            <Pressable
+              style={({ pressed }) => [styles.listItem, pressed && { backgroundColor: colors.backgroundSelected }]}
+            >
+              <View style={styles.listItemLeft}>
+                <View style={[styles.itemIconContainer, { backgroundColor: colors.background }]}>
+                  <Ionicons name="card-outline" size={20} color={colors.textSecondary} />
+                </View>
+                <ThemedText style={styles.listItemText}>Payment Methods</ThemedText>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+            </Pressable>
+
+            <View style={[styles.divider, { backgroundColor: colors.background }]} />
+
+            {/* Linked Accounts */}
+            <Pressable
+              style={({ pressed }) => [styles.listItem, pressed && { backgroundColor: colors.backgroundSelected }]}
+            >
+              <View style={styles.listItemLeft}>
+                <View style={[styles.itemIconContainer, { backgroundColor: colors.background }]}>
+                  <Ionicons name="wallet-outline" size={20} color={colors.textSecondary} />
+                </View>
+                <ThemedText style={styles.listItemText}>Linked Accounts</ThemedText>
+              </View>
+              <View style={styles.listItemRight}>
+                <ThemedText style={[styles.badgeText, { color: colors.textSecondary }]}>3</ThemedText>
+                <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+              </View>
+            </Pressable>
+          </View>
+        </View>
+
+        {/* PREFERENCES SECTION */}
+        <View style={styles.sectionContainer}>
+          <ThemedText style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+            PREFERENCES
+          </ThemedText>
+          <View style={[styles.listContainer, { backgroundColor: colors.backgroundElement }]}>
+            {/* AI Auto-Categorization */}
+            <View style={styles.listItemWithSub}>
+              <View style={styles.listItemLeft}>
+                <View style={[styles.itemIconContainer, { backgroundColor: theme === 'dark' ? '#1A2F4C' : '#EBF3FF' }]}>
+                  <Ionicons name="sparkles-outline" size={20} color={primaryColor} />
+                </View>
+                <View style={styles.itemTextWithSub}>
+                  <ThemedText style={styles.listItemText}>AI Auto-Categorization</ThemedText>
+                  <ThemedText style={[styles.listItemSubText, { color: colors.textSecondary }]}>
+                    Smart expense sorting
+                  </ThemedText>
+                </View>
+              </View>
+              <Switch
+                value={aiAutoCategorization}
+                onValueChange={setAiAutoCategorization}
+                trackColor={{ false: '#D1D5DB', true: primaryColor }}
+                thumbColor="#FFFFFF"
+                ios_backgroundColor={colors.backgroundSelected}
+              />
+            </View>
+
+            <View style={[styles.divider, { backgroundColor: colors.background }]} />
+
+            {/* Notifications */}
+            <View style={styles.listItemWithSub}>
+              <View style={styles.listItemLeft}>
+                <View style={[styles.itemIconContainer, { backgroundColor: colors.background }]}>
+                  <Ionicons name="notifications-outline" size={20} color={colors.textSecondary} />
+                </View>
+                <View style={styles.itemTextWithSub}>
+                  <ThemedText style={styles.listItemText}>Notifications</ThemedText>
+                  <ThemedText style={[styles.listItemSubText, { color: colors.textSecondary }]}>
+                    Budget alerts & reminders
+                  </ThemedText>
+                </View>
+              </View>
+              <Switch
+                value={notifications}
+                onValueChange={setNotifications}
+                trackColor={{ false: '#D1D5DB', true: primaryColor }}
+                thumbColor="#FFFFFF"
+                ios_backgroundColor={colors.backgroundSelected}
+              />
+            </View>
+
+            <View style={[styles.divider, { backgroundColor: colors.background }]} />
+
+            {/* Dark Mode */}
+            <View style={styles.listItemWithSub}>
+              <View style={styles.listItemLeft}>
+                <View style={[styles.itemIconContainer, { backgroundColor: colors.background }]}>
+                  <Ionicons name="moon-outline" size={20} color={colors.textSecondary} />
+                </View>
+                <View style={styles.itemTextWithSub}>
+                  <ThemedText style={styles.listItemText}>Dark Mode</ThemedText>
+                  <ThemedText style={[styles.listItemSubText, { color: colors.textSecondary }]}>
+                    Easier on the eyes
+                  </ThemedText>
+                </View>
+              </View>
+              <Switch
+                value={themeMode === 'dark'}
+                onValueChange={toggleDarkMode}
+                trackColor={{ false: '#D1D5DB', true: primaryColor }}
+                thumbColor="#FFFFFF"
+                ios_backgroundColor={colors.backgroundSelected}
+              />
+            </View>
+
+            <View style={[styles.divider, { backgroundColor: colors.background }]} />
+
+            {/* Currency */}
+            <Pressable
+              style={({ pressed }) => [styles.listItem, pressed && { backgroundColor: colors.backgroundSelected }]}
+            >
+              <View style={styles.listItemLeft}>
+                <View style={[styles.itemIconContainer, { backgroundColor: colors.background }]}>
+                  <Ionicons name="cash-outline" size={20} color={colors.textSecondary} />
+                </View>
+                <ThemedText style={styles.listItemText}>Currency</ThemedText>
+              </View>
+              <View style={styles.listItemRight}>
+                <ThemedText style={[styles.badgeText, { color: colors.textSecondary }]}>
+                  {currency} ($)
+                </ThemedText>
+                <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+              </View>
+            </Pressable>
+
+            <View style={[styles.divider, { backgroundColor: colors.background }]} />
+
+            {/* Privacy & Security */}
+            <Pressable
+              style={({ pressed }) => [styles.listItem, pressed && { backgroundColor: colors.backgroundSelected }]}
+            >
+              <View style={styles.listItemLeft}>
+                <View style={[styles.itemIconContainer, { backgroundColor: colors.background }]}>
+                  <Ionicons name="shield-checkmark-outline" size={20} color={colors.textSecondary} />
+                </View>
+                <ThemedText style={styles.listItemText}>Privacy & Security</ThemedText>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+            </Pressable>
+
+            <View style={[styles.divider, { backgroundColor: colors.background }]} />
+
+            {/* Help Center */}
+            <Pressable
+              style={({ pressed }) => [styles.listItem, pressed && { backgroundColor: colors.backgroundSelected }]}
+            >
+              <View style={styles.listItemLeft}>
+                <View style={[styles.itemIconContainer, { backgroundColor: colors.background }]}>
+                  <Ionicons name="help-circle-outline" size={20} color={colors.textSecondary} />
+                </View>
+                <ThemedText style={styles.listItemText}>Help Center</ThemedText>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+            </Pressable>
+
+            <View style={[styles.divider, { backgroundColor: colors.background }]} />
+
+            {/* About Spendro */}
+            <Pressable
+              style={({ pressed }) => [styles.listItem, pressed && { backgroundColor: colors.backgroundSelected }]}
+            >
+              <View style={styles.listItemLeft}>
+                <View style={[styles.itemIconContainer, { backgroundColor: colors.background }]}>
+                  <Ionicons name="information-circle-outline" size={20} color={colors.textSecondary} />
+                </View>
+                <ThemedText style={styles.listItemText}>About Spendro</ThemedText>
+              </View>
+              <View style={styles.listItemRight}>
+                <ThemedText style={[styles.badgeText, { color: colors.textSecondary }]}>v1.0.0</ThemedText>
+                <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+              </View>
+            </Pressable>
+          </View>
+        </View>
+
+        {/* LOGOUT BUTTON */}
+        <Pressable
+          onPress={handleLogout}
+          style={({ pressed }) => [
+            styles.logoutButton,
+            { borderColor: colors.backgroundSelected },
+            pressed && { backgroundColor: theme === 'dark' ? '#2d1414' : '#fef2f2' },
+          ]}
+        >
+          <Ionicons name="log-out-outline" size={20} color="#EF4444" style={styles.logoutIcon} />
+          <ThemedText style={styles.logoutText}>Log Out</ThemedText>
+        </Pressable>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.three,
+    paddingBottom: Spacing.two,
+  },
+  headerTitle: {
+    fontWeight: '800',
+  },
+  iconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scrollContent: {
+    paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.two,
+    paddingBottom: Spacing.six,
+  },
+  profileCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 24,
+    padding: Spacing.four,
+    marginBottom: Spacing.four,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 2,
+      },
+      web: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+      },
+    }),
+  },
+  profileAvatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    color: '#ffffff',
+    fontSize: 22,
+    fontWeight: '800',
+  },
+  profileDetails: {
+    flex: 1,
+    marginLeft: Spacing.three,
+  },
+  profileName: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  profileEmail: {
+    fontSize: 14,
+    marginTop: Spacing.half,
+  },
+  premiumBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    borderRadius: 99,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.half,
+    marginTop: Spacing.one,
+  },
+  premiumIcon: {
+    marginRight: 4,
+  },
+  premiumText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  sectionContainer: {
+    marginBottom: Spacing.four,
+  },
+  sectionHeader: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: Spacing.two,
+    paddingLeft: Spacing.two,
+    letterSpacing: 0.5,
+  },
+  listContainer: {
+    borderRadius: 24,
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.03,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 1,
+      },
+      web: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.03,
+        shadowRadius: 4,
+      },
+    }),
+  },
+  listItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.three + 2,
+    paddingHorizontal: Spacing.four,
+  },
+  listItemWithSub: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.three,
+    paddingHorizontal: Spacing.four,
+  },
+  listItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  itemIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Spacing.three,
+  },
+  listItemText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  itemTextWithSub: {
+    flexDirection: 'column',
+    flex: 1,
+  },
+  listItemSubText: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  listItemRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  badgeText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  divider: {
+    height: 1,
+    marginHorizontal: Spacing.four,
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingVertical: Spacing.three,
+    marginTop: Spacing.two,
+    marginBottom: Spacing.six,
+  },
+  logoutIcon: {
+    marginRight: Spacing.two,
+  },
+  logoutText: {
+    color: '#EF4444',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+});

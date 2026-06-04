@@ -12,12 +12,16 @@ Your responsibility is to design, architect, and implement a scalable, productio
 - React Native
 - TypeScript
 - Expo Router (file-based routing)
-- TanStack Query (React Query)
-- Zustand (global state)
+- React Native Firebase (Native SDKs):
+  - `@react-native-firebase/app` → Core Firebase configuration
+  - `@react-native-firebase/auth` → Authentication
+  - `@react-native-firebase/firestore` → Database (NoSQL)
+  - `@react-native-firebase/crashlytics` → Crash reporting and monitoring
+- TanStack Query (React Query) → Cache/Sync Firestore server state
+- Zustand (global state) → Local/Client app state only
 - React Hook Form (forms)
 - Zod (validation)
-- Axios (API layer)
-- Expo Secure Store (secure storage)
+- Expo Secure Store (secure local storage)
 - NativeWind (only if styling requested)
 
 ---
@@ -36,7 +40,7 @@ The app includes:
 - AI insights (spending behavior analysis)
 - Receipt scanning (optional)
 - Multi-currency support
-- Offline-first support (basic caching)
+- Offline-first support (Firestore offline persistence + basic caching)
 - Onboarding flow for new users
 - Unified auth screen (Login/Signup with tab toggle)
 
@@ -44,16 +48,17 @@ The app includes:
 
 ## 🏗️ Architecture Rules
 
-### 1. Expo First Approach
+### 1. Expo First Approach (Development Build Required)
 
-Always prefer Expo modules before native libraries.
+Always prefer Expo modules before custom native libraries, but since we are using **React Native Firebase**, a standard **Expo Go** environment will not work.
+- **You MUST use Expo Development Builds (`expo-dev-client`)** to run and test the app.
+- Never suggest Expo Go for testing Firebase features.
 
-Use:
-
+Other Expo Modules in use:
 - expo-camera → receipt capture
 - expo-image-picker → receipts
 - expo-file-system → storage
-- expo-secure-store → sensitive data
+- expo-secure-store → sensitive local data
 - expo-notifications → reminders
 
 ---
@@ -67,12 +72,15 @@ src/
 │   ├── (auth)/
 │   │   ├── _layout.tsx
 │   │   └── auth.tsx # Unified login/signup screen
-│   ├── index.tsx # Home/Dashboard
-│   ├── scan.tsx # Receipt scanner
-│   ├── analytics.tsx # Analytics screen
-│   ├── budget.tsx # Budget screen
-│   └── settings.tsx # Settings screen
-├── features/ # Feature modules
+│   ├── (tabs)/ # Tab navigation routing
+│   │   ├── index.tsx # Home/Dashboard
+│   │   ├── scan.tsx # Receipt scanner
+│   │   ├── analytics.tsx # Analytics screen
+│   │   ├── budget.tsx # Budget screen
+│   │   └── settings.tsx # Settings screen
+│   └── expense/
+│       └── [id].tsx # Expense detail screen
+├── features/ # Feature modules (by domain: expenses, budget, auth)
 ├── components/ # Reusable UI components
 │   ├── themed-text.tsx # Themed text component
 │   ├── themed-view.tsx # Themed view component
@@ -80,9 +88,13 @@ src/
 │   ├── auth-text-input.tsx # Reusable auth input
 │   ├── onboarding-screen.tsx # Onboarding flow
 │   └── ...
-├── hooks/ # Custom hooks
-├── services/ # API layer
-├── store/ # Zustand stores (auth, etc)
+├── hooks/ # Custom hooks (Firestore query/mutation hooks)
+├── services/ # Firebase & AI services layer
+│   ├── authService.ts # Firebase Auth handlers
+│   ├── expenseService.ts # Firestore expense handlers
+│   ├── budgetService.ts # Firestore budget handlers
+│   └── aiService.ts # AI Insights client
+├── store/ # Zustand stores (auth UI state, theme, etc.)
 ├── utils/ # Helpers
 ├── types/ # TypeScript types
 ├── constants/ # App constants & theme
@@ -122,98 +134,91 @@ The app includes reusable auth components in `/components/`:
 
 ### 5. Feature-Based Architecture
 
-Each feature must contain:
+Each feature module under `features/` must contain:
 
 - UI components
-- API calls (if needed)
-- hooks (if needed)
-- types
-- validation schema (if needed)
+- Database service operations (via Firestore wrapper)
+- Custom hooks (for TanStack Query or Firestore subscriptions)
+- Types
+- Validation schemas (Zod)
 
 ---
 
-### 6. Data Layer Rules
+### 6. Data Layer Rules (Firebase Auth & Firestore)
 
-- NEVER call APIs inside components
-- Use React Query for all server state:
-  - queries → fetch expenses
-  - mutations → add/update/delete expenses
-  - caching → monthly summaries
-- Use Axios instance in services/apiClient.ts
+- **NEVER call Firebase/Firestore SDKs directly inside components.** All operations must go through service files and custom hooks.
+- **NEVER use Axios or REST API endpoints.** Replace all API client code with React Native Firebase SDK calls.
+- **Use TanStack Query (React Query) for managing Firestore server state** (fetching, caching, updates).
+  - Queries → Fetch data from Firestore collections using `getDocs()` or real-time hooks wrapping `onSnapshot`.
+  - Mutations → Perform database operations (add, update, delete) in Firestore.
+- Firestore offline persistence must be configured at the app level.
 
 ---
 
-### 7. State Management (Zustand Only for)
+### 7. State Management (Zustand Only for Client State)
 
-Use Zustand ONLY for:
+Use Zustand ONLY for client-side state:
 
-- Auth state
-- User profile
-- Theme (dark/light)
-- Offline mode state
-- App preferences
+- UI/Auth State (e.g., current active session info / loading status)
+- User preferences & settings
+- Theme mode (dark/light)
+- Offline state indicator
 
-DO NOT use Zustand for server state
+**DO NOT use Zustand for Firestore database state.** All database collections/documents must be fetched and cached via TanStack Query.
 
 ---
 
 ### 8. Forms
 
 Use:
-
 - React Hook Form
 - Zod validation
 
 Example use cases:
-
-- Add expense
-- Create budget
-- Login/signup (already implemented with unified auth screen)
+- Add/Edit expense
+- Create/Edit budget
+- Authentication forms (handled in the unified auth screen)
 
 ---
 
 ### 9. AI Integration (Core Feature)
 
 The app includes AI features such as:
-
 - Categorizing expenses automatically
 - Spending insights
 - Monthly financial summary
 - Budget recommendations
 
 Rules:
-
-- AI calls must be abstracted in services/aiService.ts
-- Never call AI directly in UI components
-- Cache AI responses when possible
+- AI calls must be abstracted in `services/aiService.ts`.
+- Never call AI endpoints directly in UI components.
+- Cache AI responses to avoid redundant computations/costs.
 
 ---
 
 ### 10. Performance Rules
 
 Always:
-
-- Use FlatList for lists
-- Avoid unnecessary re-renders
-- Use React.memo for expensive components
-- Use useCallback/useMemo correctly
-- Optimize images via Expo Image
+- Use `FlatList` or `SectionList` for transaction/expense lists.
+- Avoid unnecessary re-renders.
+- Use `React.memo` for expensive list items or charts.
+- Use `useCallback`/`useMemo` correctly.
+- Optimize images via Expo Image.
 
 ---
 
 ### 11. UI/UX Rules
 
-- Mobile-first design
-- Support tablet layouts
+- Mobile-first design.
+- Support tablet layouts.
 - Always include:
   - loading state
   - empty state
   - error state
-- Use `ThemedText` and `ThemedView` for all UI elements
-- Consistent theming with light/dark mode support
+- Use `ThemedText` and `ThemedView` for all UI elements.
+- Consistent theming with light/dark mode support.
 
 Expense dashboard must include:
-
 - Total balance
 - Monthly income/expense chart
 - Category breakdown
@@ -221,41 +226,69 @@ Expense dashboard must include:
 
 ---
 
-### 12. Security Rules
+### 12. Security & Database Rules
 
-- Store tokens only in Expo Secure Store
-- Never expose API keys in frontend
-- Use .env for configuration
-- Encrypt sensitive cached data if needed
+- Use Firebase Authentication to secure user accounts.
+- **Firestore Security Rules:** Ensure database access is restricted so users can only read and write their own documents.
+- Keep Firestore collection schemas strict using TypeScript types.
+- Never hardcode Firebase config secrets. Use `.env` or Expo Constants where appropriate.
+- Store sensitive local tokens or identifiers only in Expo Secure Store.
 
 ---
 
 ### 13. Navigation
 
-Use Expo Router:
-
-```
-- app/(auth) → Login/Signup (unified auth screen)
-- app/(tabs)
-  - app/index → Home
-  - app/scan → Receipt Scanner
-  - app/analytics → Analytics
-  - app/budget → Budget
-  - app/settings → Settings
-- app/expense/[id] → Expense detail
-```
+Use Expo Router file-based routing:
+- `app/(auth)` → Authentication flow (unified login/signup with tab toggle)
+- `app/(tabs)` → Main dashboard and settings screens
+  - `app/(tabs)/index` → Home Dashboard
+  - `app/(tabs)/scan` → Receipt Scanner
+  - `app/(tabs)/analytics` → Analytics
+  - `app/(tabs)/budget` → Budgets
+  - `app/(tabs)/settings` → Settings
+- `app/expense/[id]` → Expense detail view
 
 ---
 
-### 14. API Design Pattern
+### 14. Firebase Service Design Pattern
+
+All database and auth logic must follow this structure in `services/`:
 
 ```
 services/
-├── apiClient.ts
-├── expenseService.ts
-├── budgetService.ts
-├── authService.ts
-└── aiService.ts
+├── authService.ts      # Firebase Auth methods (login, signup, logout)
+├── expenseService.ts   # Firestore expense collection methods
+├── budgetService.ts    # Firestore budget collection methods
+└── aiService.ts        # AI backend interactions
+```
+
+Example Firestore Query Service Pattern:
+```typescript
+// services/expenseService.ts
+import firestore from '@react-native-firebase/firestore';
+import { Expense } from '@/types/expense';
+
+export const expenseService = {
+  getExpenses: async (userId: string): Promise<Expense[]> => {
+    const snapshot = await firestore()
+      .collection('expenses')
+      .where('userId', '==', userId)
+      .orderBy('date', 'desc')
+      .get();
+      
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as Expense[];
+  },
+  
+  addExpense: async (userId: string, expenseData: Omit<Expense, 'id'>): Promise<string> => {
+    const docRef = await firestore()
+      .collection('expenses')
+      .add({ ...expenseData, userId, createdAt: firestore.FieldValue.serverTimestamp() });
+    return docRef.id;
+  }
+};
 ```
 
 ---
@@ -263,11 +296,10 @@ services/
 ### 15. Error Handling
 
 Every feature must handle:
-
-- API failure
-- Empty state
-- Offline state
-- Validation errors
+- Firebase Auth and Firestore errors (e.g., authentication failures, permission issues, network disconnects).
+- Empty states (when a user has no expenses or budgets).
+- Offline states (using Firestore caching seamlessly).
+- Form validation errors.
 
 Never crash UI silently.
 
@@ -275,254 +307,27 @@ Never crash UI silently.
 
 ### 16. Onboarding & Auth Flow
 
-- **Onboarding:** 3-slide carousel (Receipt Scanning, Analytics, AI Insights)
-- **Auth:** Unified login/signup screen with tab toggle
-- Both use `ThemedText` and `ThemedView` for consistency
-- Skip button in onboarding
-- Remember onboarding completion in async storage
+- **Onboarding:** 3-slide carousel (Receipt Scanning, Analytics, AI Insights) with Skip button. Remember onboarding completion in Async Storage.
+- **Auth:** Unified login/signup screen with tab toggle (`AuthToggle`) and reusable text inputs (`AuthTextInput`).
+- Both use `ThemedText` and `ThemedView` for consistency.
 
 ---
 
 ### 17. Expo Workflow Rules
 
 Default:
-
-- Expo Managed Workflow
-
-Only suggest:
-
-- Development Build if native dependency is required
-- Bare workflow ONLY if unavoidable
+- Expo Managed Workflow utilizing **Expo Development Builds (`expo-dev-client`)** instead of Expo Go.
+- Use EAS Build (`eas build`) to generate the native runtime needed for `@react-native-firebase` packages.
 
 ---
 
 ### 18. Code Generation Rules
 
 When generating code:
-
-1. Use `ThemedText` and `ThemedView` for all UI components
-2. Explain architecture briefly
-3. Provide implementation
-4. Show folder structure if new feature
-5. Mention trade-offs
-6. Provide production optimization tips
-7. Ensure components are reusable
-8. Follow the project structure above
-
----
-
-## 🎯 Final Goal
-
-Build a scalable, production-grade AI-powered Expense Manager app (Spendro) capable of:
-
-- 100k+ users
-- offline support
-- AI-driven insights
-- secure financial data handling
-- smooth cross-platform performance
-- consistent theming (light/dark mode)
-- accessible UI with proper component reuse
-- expo-file-system → storage
-- expo-secure-store → sensitive data
-- expo-notifications → reminders
-
----
-
-### 2. Project Structure (Mandatory)
-
-src/
-├── app/ # Expo Router screens
-├── features/ # Feature modules (expenses, auth, budget)
-├── components/ # Reusable UI components
-├── hooks/ # Custom hooks
-├── services/ # API layer (Axios)
-├── store/ # Zustand stores
-├── utils/ # Helpers
-├── types/ # TypeScript types
-├── constants/ # App constants
-└── assets/ # Images, icons
-
----
-
-### 3. Feature-Based Architecture
-
-Each feature must contain:
-
-- UI components
-- API calls
-- hooks
-- types
-- validation schema
-
-Example:
-features/expenses/
-
----
-
-### 4. Data Layer Rules
-
-- NEVER call APIs inside components
-- Use React Query for all server state:
-  - queries → fetch expenses
-  - mutations → add/update/delete expenses
-  - caching → monthly summaries
-
-- Use Axios instance in services/apiClient.ts
-
----
-
-### 5. State Management (Zustand Only for)
-
-Use Zustand ONLY for:
-
-- Auth state
-- User profile
-- Theme (dark/light)
-- Offline mode state
-- App preferences
-
-DO NOT use Zustand for server state
-
----
-
-### 6. Forms
-
-Use:
-
-- React Hook Form
-- Zod validation
-
-Example use cases:
-
-- Add expense
-- Create budget
-- Login/signup
-
----
-
-### 7. AI Integration (Core Feature)
-
-The app includes AI features such as:
-
-- Categorizing expenses automatically
-- Spending insights
-- Monthly financial summary
-- Budget recommendations
-
-Rules:
-
-- AI calls must be abstracted in services/aiService.ts
-- Never call AI directly in UI components
-- Cache AI responses when possible
-
----
-
-### 8. Performance Rules
-
-Always:
-
-- Use FlatList for lists
-- Avoid unnecessary re-renders
-- Use React.memo for expensive components
-- Use useCallback/useMemo correctly
-- Optimize images via Expo Image
-
----
-
-### 9. UI/UX Rules
-
-- Mobile-first design
-- Support tablet layouts
-- Always include:
-  - loading state
-  - empty state
-  - error state
-
-Expense dashboard must include:
-
-- Total balance
-- Monthly income/expense chart
-- Category breakdown
-- Recent transactions
-
----
-
-### 10. Security Rules
-
-- Store tokens only in Expo Secure Store
-- Never expose API keys in frontend
-- Use .env for configuration
-- Encrypt sensitive cached data if needed
-
----
-
-### 11. Navigation
-
-Use Expo Router:
-
-- app/(auth)
-- app/(tabs)
-- app/expense/[id]
-- app/budget
-- app/settings
-
----
-
-### 12. API Design Pattern
-
-services/
-├── apiClient.ts
-├── expenseService.ts
-├── budgetService.ts
-├── authService.ts
-└── aiService.ts
-
----
-
-### 13. Error Handling
-
-Every feature must handle:
-
-- API failure
-- Empty state
-- Offline state
-- Validation errors
-
-Never crash UI silently.
-
----
-
-### 14. Code Generation Rules
-
-When generating code:
-
-1. Explain architecture briefly
-2. Provide implementation
-3. Show folder structure if new feature
-4. Mention trade-offs
-5. Provide production optimization tips
-
----
-
-### 15. Expo Workflow Rules
-
-Default:
-
-- Expo Managed Workflow
-
-Only suggest:
-
-- Development Build if native dependency is required
-- Bare workflow ONLY if unavoidable
-
----
-
-## 🎯 Final Goal
-
-Build a scalable AI-powered Expense Manager app capable of:
-
-- 100k+ users
-- offline support
-- AI-driven insights
-- secure financial data handling
-- smooth cross-platform performance
+1. Always use `ThemedText` and `ThemedView` for all UI components.
+2. Explain the Firestore/Firebase architecture briefly.
+3. Provide full TypeScript-typed implementation.
+4. Show the project structure changes if adding a new feature.
+5. Mention trade-offs (e.g., Firestore pagination, real-time vs. one-time fetching).
+6. Provide production performance optimization tips.
+7. Ensure components are reusable and decoupled.

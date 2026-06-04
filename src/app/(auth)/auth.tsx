@@ -1,12 +1,14 @@
 import { AuthTextInput } from '@/components/auth-text-input';
 import { AuthToggle } from '@/components/auth-toggle';
+import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors, Spacing } from '@/constants/theme';
 import { useAuthStore } from '@/store/authStore';
+import { validateEmail, validatePassword } from '@/utils/validation';
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, useColorScheme } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, useColorScheme } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function AuthScreen() {
@@ -22,14 +24,45 @@ export default function AuthScreen() {
     const [agreeToTerms, setAgreeToTerms] = useState(false);
     const [error, setError] = useState('');
 
+    // Field-specific validation errors
+    const [emailError, setEmailError] = useState('');
+    const [passwordError, setPasswordError] = useState('');
+    const [fullNameError, setFullNameError] = useState('');
+
+    const handleTabChange = (tab: 'login' | 'signup') => {
+        setActiveTab(tab);
+        setEmailError('');
+        setPasswordError('');
+        setFullNameError('');
+        setError('');
+    };
+
     const handleLogin = async () => {
         try {
             setError('');
-            if (!email || !password) {
-                setError('Please fill in all fields');
+            setEmailError('');
+            setPasswordError('');
+
+            let hasError = false;
+
+            if (!email.trim()) {
+                setEmailError('Email is required');
+                hasError = true;
+            } else if (!validateEmail(email)) {
+                setEmailError('Please enter a valid email address');
+                hasError = true;
+            }
+
+            if (!password) {
+                setPasswordError('Password is required');
+                hasError = true;
+            }
+
+            if (hasError) {
                 return;
             }
-            await login(email, password);
+
+            await login(email.trim(), password);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Login failed');
         }
@@ -38,15 +71,46 @@ export default function AuthScreen() {
     const handleSignup = async () => {
         try {
             setError('');
-            if (!fullName || !email || !password) {
-                setError('Please fill in all fields');
-                return;
+            setFullNameError('');
+            setEmailError('');
+            setPasswordError('');
+
+            let hasError = false;
+
+            if (!fullName.trim()) {
+                setFullNameError('Full name is required');
+                hasError = true;
+            } else if (fullName.trim().length < 2) {
+                setFullNameError('Name must be at least 2 characters');
+                hasError = true;
             }
+
+            if (!email.trim()) {
+                setEmailError('Email is required');
+                hasError = true;
+            } else if (!validateEmail(email)) {
+                setEmailError('Please enter a valid email address');
+                hasError = true;
+            }
+
+            if (!password) {
+                setPasswordError('Password is required');
+                hasError = true;
+            } else if (!validatePassword(password)) {
+                setPasswordError('Password must be at least 8 characters');
+                hasError = true;
+            }
+
             if (!agreeToTerms) {
                 setError('Please agree to terms and conditions');
+                hasError = true;
+            }
+
+            if (hasError) {
                 return;
             }
-            await signup(email, password, fullName);
+
+            await signup(email.trim(), password, fullName.trim());
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Signup failed');
         }
@@ -69,7 +133,7 @@ export default function AuthScreen() {
                 </ThemedView>
 
                 {/* Toggle Tabs */}
-                <AuthToggle activeTab={activeTab} onTabChange={(tab) => setActiveTab(tab)} />
+                <AuthToggle activeTab={activeTab} onTabChange={handleTabChange} />
 
                 {/* Error Message */}
                 {error ? (
@@ -88,9 +152,13 @@ export default function AuthScreen() {
                             iconName="mail-outline"
                             placeholder="you@email.com"
                             value={email}
-                            onChangeText={setEmail}
+                            onChangeText={(text) => {
+                                setEmail(text);
+                                if (emailError) setEmailError('');
+                            }}
                             keyboardType="email-address"
                             autoCapitalize="none"
+                            error={emailError}
                         />
 
                         <AuthTextInput
@@ -98,11 +166,15 @@ export default function AuthScreen() {
                             iconName="lock-closed-outline"
                             placeholder="Enter password"
                             value={password}
-                            onChangeText={setPassword}
+                            onChangeText={(text) => {
+                                setPassword(text);
+                                if (passwordError) setPasswordError('');
+                            }}
                             secureTextEntry={!showPassword}
                             showPasswordToggle
                             showPassword={showPassword}
                             onTogglePassword={() => setShowPassword(!showPassword)}
+                            error={passwordError}
                         />
 
                         {/* Forgot Password */}
@@ -111,17 +183,12 @@ export default function AuthScreen() {
                         </Pressable>
 
                         {/* Login Button */}
-                        <Pressable
-                            style={[styles.primaryButton, { backgroundColor: isLoading ? '#A0A0A0' : '#208AEF' }]}
+                        <Button
+                            title="Log In"
                             onPress={handleLogin}
-                            disabled={isLoading}
-                        >
-                            {isLoading ? (
-                                <ActivityIndicator color="#fff" />
-                            ) : (
-                                <ThemedText style={styles.primaryButtonText}>Log In</ThemedText>
-                            )}
-                        </Pressable>
+                            isLoading={isLoading}
+                            style={{ marginBottom: 24 }}
+                        />
                     </>
                 )}
 
@@ -133,8 +200,12 @@ export default function AuthScreen() {
                             iconName="person-outline"
                             placeholder="John Doe"
                             value={fullName}
-                            onChangeText={setFullName}
+                            onChangeText={(text) => {
+                                setFullName(text);
+                                if (fullNameError) setFullNameError('');
+                            }}
                             autoCapitalize="words"
+                            error={fullNameError}
                         />
 
                         <AuthTextInput
@@ -142,9 +213,13 @@ export default function AuthScreen() {
                             iconName="mail-outline"
                             placeholder="you@email.com"
                             value={email}
-                            onChangeText={setEmail}
+                            onChangeText={(text) => {
+                                setEmail(text);
+                                if (emailError) setEmailError('');
+                            }}
                             keyboardType="email-address"
                             autoCapitalize="none"
+                            error={emailError}
                         />
 
                         <AuthTextInput
@@ -152,12 +227,16 @@ export default function AuthScreen() {
                             iconName="lock-closed-outline"
                             placeholder="Create a password"
                             value={password}
-                            onChangeText={setPassword}
+                            onChangeText={(text) => {
+                                setPassword(text);
+                                if (passwordError) setPasswordError('');
+                            }}
                             secureTextEntry={!showPassword}
                             showPasswordToggle
                             showPassword={showPassword}
                             onTogglePassword={() => setShowPassword(!showPassword)}
                             helperText="Must be at least 8 characters"
+                            error={passwordError}
                         />
 
                         {/* Terms Checkbox */}
@@ -180,17 +259,12 @@ export default function AuthScreen() {
                         </ThemedView>
 
                         {/* Signup Button */}
-                        <Pressable
-                            style={[styles.primaryButton, { backgroundColor: isLoading ? '#A0A0A0' : '#208AEF' }]}
+                        <Button
+                            title="Sign Up"
                             onPress={handleSignup}
-                            disabled={isLoading}
-                        >
-                            {isLoading ? (
-                                <ActivityIndicator color="#fff" />
-                            ) : (
-                                <ThemedText style={styles.primaryButtonText}>Sign Up</ThemedText>
-                            )}
-                        </Pressable>
+                            isLoading={isLoading}
+                            style={{ marginBottom: 24 }}
+                        />
                     </>
                 )}
 
@@ -204,13 +278,17 @@ export default function AuthScreen() {
                 </ThemedView>
 
                 {/* Social Buttons */}
-                <Pressable style={[styles.socialButton, { borderColor: colors.backgroundElement }]}>
-                    <ThemedText type="small">🔍 Continue with Google</ThemedText>
-                </Pressable>
+                <Button
+                    title="🔍 Continue with Google"
+                    variant="outline"
+                    style={{ marginBottom: 12 }}
+                />
 
-                <Pressable style={[styles.socialButton, { borderColor: colors.backgroundElement }]}>
-                    <ThemedText type="small">🍎 Continue with Apple</ThemedText>
-                </Pressable>
+                <Button
+                    title="🍎 Continue with Apple"
+                    variant="outline"
+                    style={{ marginBottom: 12 }}
+                />
             </ScrollView>
         </SafeAreaView>
     );
