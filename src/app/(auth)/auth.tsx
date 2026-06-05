@@ -10,11 +10,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, useColorScheme } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 
 export default function AuthScreen() {
     const scheme = useColorScheme();
     const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
     const { login, signup, isLoading } = useAuthStore();
+    const router = useRouter();
 
     const [activeTab, setActiveTab] = useState<'login' | 'signup'>('login');
     const [email, setEmail] = useState('');
@@ -118,6 +120,20 @@ export default function AuthScreen() {
 
     return (
         <SafeAreaView style={[styles.screen, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
+            <ThemedView style={styles.topBar}>
+                <Pressable
+                    onPress={() => router.replace('/(tabs)')}
+                    style={({ pressed }) => [
+                        styles.closeButton,
+                        pressed && { backgroundColor: colors.backgroundSelected }
+                    ]}
+                    hitSlop={12}
+                    accessibilityRole="button"
+                    accessibilityLabel="Close authentication"
+                >
+                    <Ionicons name="close-outline" size={24} color={colors.text} />
+                </Pressable>
+            </ThemedView>
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
                 {/* Header */}
                 <ThemedView style={styles.headerContainer}>
@@ -289,6 +305,16 @@ export default function AuthScreen() {
                     variant="outline"
                     style={{ marginBottom: 12 }}
                 />
+
+                <Pressable
+                    onPress={() => router.replace('/(tabs)')}
+                    style={styles.guestLinkContainer}
+                    accessibilityRole="button"
+                >
+                    <ThemedText style={styles.guestLinkText}>
+                        Continue as Guest
+                    </ThemedText>
+                </Pressable>
             </ScrollView>
         </SafeAreaView>
     );
@@ -382,5 +408,29 @@ const styles = StyleSheet.create({
     },
     link: {
         color: '#208AEF',
+    },
+    topBar: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        paddingHorizontal: Spacing.four,
+        paddingTop: Spacing.two,
+        backgroundColor: 'transparent',
+    },
+    closeButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    guestLinkContainer: {
+        alignItems: 'center',
+        marginTop: 16,
+        paddingVertical: 12,
+    },
+    guestLinkText: {
+        color: '#208AEF',
+        fontSize: 15,
+        fontWeight: '600',
     },
 });

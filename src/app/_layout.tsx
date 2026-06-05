@@ -77,12 +77,8 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       </Stack>
-      {/* Redirect based on authentication state */}
-      {isAuthenticated ? (
-        <Redirect href="/(tabs)" />
-      ) : (
-        <Redirect href="/(auth)/auth" />
-      )}
+      {/* Redirect to tabs if authenticated */}
+      {isAuthenticated && <Redirect href="/(tabs)" />}
     </ThemeProvider>
   );
 }

@@ -16,15 +16,17 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 
 export default function SettingsScreen() {
   const scheme = useColorScheme();
   const theme = scheme === 'dark' ? 'dark' : 'light';
   const colors = Colors[theme];
   const primaryColor = '#3369F6';
+  const router = useRouter();
 
   // Auth Store details
-  const { user, logout } = useAuthStore();
+  const { user, logout, isAuthenticated } = useAuthStore();
 
   // Settings Store details
   const {
@@ -94,23 +96,41 @@ export default function SettingsScreen() {
       >
         {/* Profile Card */}
         <Pressable
+          onPress={() => {
+            if (!isAuthenticated) {
+              router.push('/(auth)/auth');
+            }
+          }}
           style={[styles.profileCard, { backgroundColor: colors.backgroundElement }]}
           android_ripple={{ color: colors.backgroundSelected }}
         >
-          <View style={[styles.profileAvatar, { backgroundColor: primaryColor }]}>
-            <ThemedText style={styles.avatarText}>{getInitials(user?.name)}</ThemedText>
+          <View style={[styles.profileAvatar, { backgroundColor: isAuthenticated ? primaryColor : '#73717D' }]}>
+            <ThemedText style={styles.avatarText}>
+              {isAuthenticated ? getInitials(user?.name) : 'G'}
+            </ThemedText>
           </View>
           <View style={styles.profileDetails}>
-            <ThemedText style={styles.profileName}>{user?.name || 'User'}</ThemedText>
-            <ThemedText style={[styles.profileEmail, { color: colors.textSecondary }]}>
-              {user?.email || 'user@spendro.com'}
+            <ThemedText style={styles.profileName}>
+              {isAuthenticated ? (user?.name || 'User') : 'Guest User'}
             </ThemedText>
-            <View style={[styles.premiumBadge, { backgroundColor: theme === 'dark' ? '#1A2F4C' : '#EBF3FF' }]}>
-              <Ionicons name="sparkles" size={12} color={theme === 'dark' ? '#3A96FF' : '#3369F6'} style={styles.premiumIcon} />
-              <ThemedText style={[styles.premiumText, { color: theme === 'dark' ? '#3A96FF' : '#3369F6' }]}>
-                Premium
-              </ThemedText>
-            </View>
+            <ThemedText style={[styles.profileEmail, { color: colors.textSecondary }]}>
+              {isAuthenticated ? (user?.email || 'user@spendro.com') : 'Log in to sync your data & insights'}
+            </ThemedText>
+            {isAuthenticated ? (
+              <View style={[styles.premiumBadge, { backgroundColor: theme === 'dark' ? '#1A2F4C' : '#EBF3FF' }]}>
+                <Ionicons name="sparkles" size={12} color={theme === 'dark' ? '#3A96FF' : '#3369F6'} style={styles.premiumIcon} />
+                <ThemedText style={[styles.premiumText, { color: theme === 'dark' ? '#3A96FF' : '#3369F6' }]}>
+                  Premium
+                </ThemedText>
+              </View>
+            ) : (
+              <View style={[styles.premiumBadge, { backgroundColor: theme === 'dark' ? '#2d1a12' : '#fffbeb' }]}>
+                <Ionicons name="cloud-offline-outline" size={12} color={theme === 'dark' ? '#ff9b3a' : '#d97706'} style={styles.premiumIcon} />
+                <ThemedText style={[styles.premiumText, { color: theme === 'dark' ? '#ff9b3a' : '#d97706' }]}>
+                  Local Mode
+                </ThemedText>
+              </View>
+            )}
           </View>
           <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
         </Pressable>
@@ -315,18 +335,32 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* LOGOUT BUTTON */}
-        <Pressable
-          onPress={handleLogout}
-          style={({ pressed }) => [
-            styles.logoutButton,
-            { borderColor: colors.backgroundSelected },
-            pressed && { backgroundColor: theme === 'dark' ? '#2d1414' : '#fef2f2' },
-          ]}
-        >
-          <Ionicons name="log-out-outline" size={20} color="#EF4444" style={styles.logoutIcon} />
-          <ThemedText style={styles.logoutText}>Log Out</ThemedText>
-        </Pressable>
+        {/* LOGOUT / LOGIN BUTTON */}
+        {isAuthenticated ? (
+          <Pressable
+            onPress={handleLogout}
+            style={({ pressed }) => [
+              styles.logoutButton,
+              { borderColor: colors.backgroundSelected },
+              pressed && { backgroundColor: theme === 'dark' ? '#2d1414' : '#fef2f2' },
+            ]}
+          >
+            <Ionicons name="log-out-outline" size={20} color="#EF4444" style={styles.logoutIcon} />
+            <ThemedText style={styles.logoutText}>Log Out</ThemedText>
+          </Pressable>
+        ) : (
+          <Pressable
+            onPress={() => router.push('/(auth)/auth')}
+            style={({ pressed }) => [
+              styles.loginButton,
+              { backgroundColor: primaryColor },
+              pressed && { opacity: 0.8 },
+            ]}
+          >
+            <Ionicons name="log-in-outline" size={20} color="#FFFFFF" style={styles.logoutIcon} />
+            <ThemedText style={styles.loginButtonText}>Log In / Sign Up</ThemedText>
+          </Pressable>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -515,6 +549,20 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
     marginTop: Spacing.two,
     marginBottom: Spacing.six,
+  },
+  loginButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 20,
+    paddingVertical: Spacing.three,
+    marginTop: Spacing.two,
+    marginBottom: Spacing.six,
+  },
+  loginButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
   logoutIcon: {
     marginRight: Spacing.two,

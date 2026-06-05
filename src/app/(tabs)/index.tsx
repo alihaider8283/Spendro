@@ -2,6 +2,8 @@ import { Pressable, ScrollView, StyleSheet, Text, useColorScheme, View } from 'r
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Colors, Spacing } from '@/constants/theme';
+import { useAuthStore } from '@/store/authStore';
+import { useRouter } from 'expo-router';
 
 const recentTransactions = [
   { id: '1', title: 'Starbucks', amount: '-$6.40', subtitle: 'Coffee' },
@@ -12,18 +14,35 @@ const recentTransactions = [
 export default function HomeScreen() {
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
+  const { user, isAuthenticated } = useAuthStore();
+  const router = useRouter();
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: colors.background }]}>      
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View>
-            <Text style={[styles.smallText, { color: colors.textSecondary }]}>Good morning</Text>
-            <Text style={[styles.title, { color: colors.text }]}>Alex Morgan</Text>
+            <Text style={[styles.smallText, { color: colors.textSecondary }]}>
+              {isAuthenticated ? 'Welcome back' : 'Good morning'}
+            </Text>
+            <Text style={[styles.title, { color: colors.text }]}>
+              {isAuthenticated ? (user?.name || 'User') : 'Guest'}
+            </Text>
           </View>
-          <View style={[styles.avatar, { backgroundColor: colors.backgroundElement }]}> 
-            <Text style={[styles.avatarText, { color: colors.text }]}>A</Text>
-          </View>
+          <Pressable 
+            onPress={() => !isAuthenticated && router.push('/(auth)/auth')}
+            style={({ pressed }) => [
+              styles.avatar, 
+              { backgroundColor: colors.backgroundElement },
+              pressed && !isAuthenticated && { opacity: 0.7 }
+            ]}
+            accessibilityRole={!isAuthenticated ? 'button' : undefined}
+            accessibilityLabel={!isAuthenticated ? 'Log in or sign up' : undefined}
+          > 
+            <Text style={[styles.avatarText, { color: colors.text }]}>
+              {isAuthenticated ? (user?.name?.[0] || 'U').toUpperCase() : 'G'}
+            </Text>
+          </Pressable>
         </View>
 
         <View style={[styles.card, { backgroundColor: '#3369F6' }]}> 

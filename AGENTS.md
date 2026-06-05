@@ -305,11 +305,16 @@ Never crash UI silently.
 
 ---
 
-### 16. Onboarding & Auth Flow
+### 16. Onboarding, Splash & Auth Flow
 
+- **Splash Screen:** App launches with a splash screen, checking onboarding status and initializing authentication state.
 - **Onboarding:** 3-slide carousel (Receipt Scanning, Analytics, AI Insights) with Skip button. Remember onboarding completion in Async Storage.
-- **Auth:** Unified login/signup screen with tab toggle (`AuthToggle`) and reusable text inputs (`AuthTextInput`).
-- Both use `ThemedText` and `ThemedView` for consistency.
+- **Optional Login Flow:** Login is optional. After onboarding, the user is redirected to the Home/Dashboard (`/(tabs)`).
+  - If the user is unauthenticated, they can browse the app as a Guest in Local Mode.
+  - The UI (Home Screen, Settings Screen) must reflect the Guest state (e.g., "Guest User", "Log in to sync your data").
+  - The Settings screen provides options to Log In or Sign Up, which routes to `/(auth)/auth`.
+  - Once logged in, the user is redirected back to the tabs.
+- All flows use `ThemedText` and `ThemedView` for consistency.
 
 ---
 
