@@ -7,6 +7,9 @@ import { DarkTheme, DefaultTheme, Redirect, Stack, ThemeProvider, type ErrorBoun
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { enableScreens } from 'react-native-screens';
+
+enableScreens();
 
 export default function RootLayout() {
   const scheme = useColorScheme();
@@ -76,6 +79,14 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="expense/add"
+          options={{
+            headerShown: false,
+            presentation: 'modal',
+            animation: 'slide_from_bottom',
+          }}
+        />
       </Stack>
       {/* Redirect to tabs if authenticated */}
       {isAuthenticated && <Redirect href="/(tabs)" />}

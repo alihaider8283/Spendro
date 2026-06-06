@@ -54,10 +54,10 @@ export default function TabsLayout() {
               inactiveColor={inactiveTabColor}
             />
           </TabTrigger>
-          <TabTrigger name="scan" href="/scan" asChild>
+          <TabTrigger name="transactions" href="/transactions" asChild>
             <TabBarItem
-              icon="camera-outline"
-              label="Scan"
+              icon="receipt-outline"
+              label="Transactions"
               activeColor={primaryColor}
               inactiveColor={inactiveTabColor}
             />

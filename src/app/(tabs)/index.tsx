@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, Spacing } from '@/constants/theme';
 import { useAuthStore } from '@/store/authStore';
 import { useRouter } from 'expo-router';
+import { FAB } from '@/components/floating-action-button';
 
 const recentTransactions = [
   { id: '1', title: 'Starbucks', amount: '-$6.40', subtitle: 'Coffee' },
@@ -60,10 +61,13 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.actionsRow}>
-          <Pressable style={[styles.actionButton, { backgroundColor: colors.backgroundElement }]}> 
+          <Pressable
+            style={[styles.actionButton, { backgroundColor: colors.backgroundElement }]}
+            onPress={() => router.push('/expense/add')}
+          >
             <Text style={[styles.actionButtonText, { color: colors.text }]}>+ Add Expense</Text>
           </Pressable>
-          <Pressable style={[styles.actionButton, { backgroundColor: colors.backgroundElement }]}> 
+          <Pressable style={[styles.actionButton, { backgroundColor: colors.backgroundElement }]}>
             <Text style={[styles.actionButtonText, { color: colors.text }]}>Scan Receipt</Text>
           </Pressable>
         </View>
@@ -105,6 +109,7 @@ export default function HomeScreen() {
           ))}
         </View>
       </ScrollView>
+      <FAB />
     </SafeAreaView>
   );
 }
