@@ -143,3 +143,61 @@ export const CURRENCIES = [
   { code: 'INR', symbol: '₹' },
   { code: 'AED', symbol: 'د.إ' },
 ];
+
+export function getCategoryByNameOrId(nameOrId: string): Category {
+  if (!nameOrId) {
+    return CATEGORIES.find(c => c.id === 'other') || CATEGORIES[CATEGORIES.length - 1];
+  }
+  const norm = nameOrId.toLowerCase().trim();
+  
+  // Try exact ID match
+  let found = CATEGORIES.find(c => c.id.toLowerCase() === norm);
+  if (found) return found;
+
+  // Try exact label match
+  found = CATEGORIES.find(c => c.label.toLowerCase() === norm);
+  if (found) return found;
+
+  // Try synonyms/partial matches
+  if (norm.includes('food') || norm.includes('dining') || norm.includes('drink') || norm.includes('cafe') || norm.includes('restaurant') || norm.includes('mcdonald')) {
+    return CATEGORIES.find(c => c.id === 'dining') || CATEGORIES[0];
+  }
+  if (norm.includes('grocer') || norm.includes('market') || norm.includes('supermarket')) {
+    return CATEGORIES.find(c => c.id === 'groceries') || CATEGORIES[1];
+  }
+  if (norm.includes('ride') || norm.includes('uber') || norm.includes('taxi') || norm.includes('car') || norm.includes('transport') || norm.includes('cab')) {
+    return CATEGORIES.find(c => c.id === 'transport') || CATEGORIES[2];
+  }
+  if (norm.includes('bill') || norm.includes('utility') || norm.includes('electric') || norm.includes('water') || norm.includes('gas') || norm.includes('power')) {
+    return CATEGORIES.find(c => c.id === 'utilities') || CATEGORIES[3];
+  }
+  if (norm.includes('netflix') || norm.includes('movie') || norm.includes('film') || norm.includes('entertainment') || norm.includes('show') || norm.includes('game') || norm.includes('spotify')) {
+    return CATEGORIES.find(c => c.id === 'entertainment') || CATEGORIES[4];
+  }
+  if (norm.includes('shop') || norm.includes('amazon') || norm.includes('store') || norm.includes('cart') || norm.includes('target') || norm.includes('clothing')) {
+    return CATEGORIES.find(c => c.id === 'shopping') || CATEGORIES[5];
+  }
+  if (norm.includes('gym') || norm.includes('health') || norm.includes('fit') || norm.includes('medical') || norm.includes('doctor') || norm.includes('pharmacy')) {
+    return CATEGORIES.find(c => c.id === 'health') || CATEGORIES[6];
+  }
+  if (norm.includes('school') || norm.includes('book') || norm.includes('edu') || norm.includes('course') || norm.includes('university') || norm.includes('class')) {
+    return CATEGORIES.find(c => c.id === 'education') || CATEGORIES[7];
+  }
+  if (norm.includes('flight') || norm.includes('travel') || norm.includes('hotel') || norm.includes('trip') || norm.includes('vacation')) {
+    return CATEGORIES.find(c => c.id === 'travel') || CATEGORIES[8];
+  }
+  if (norm.includes('sub') || norm.includes('renew') || norm.includes('recurring')) {
+    return CATEGORIES.find(c => c.id === 'subscriptions') || CATEGORIES[9];
+  }
+  if (norm.includes('salary') || norm.includes('income') || norm.includes('earn') || norm.includes('paycheck') || norm.includes('deposit')) {
+    return CATEGORIES.find(c => c.id === 'income') || CATEGORIES[10];
+  }
+
+  // Fallback to other
+  return CATEGORIES.find(c => c.id === 'other') || CATEGORIES[CATEGORIES.length - 1];
+}
+
+export function getCurrencySymbol(code: string): string {
+  return CURRENCIES.find(c => c.code.toUpperCase() === code.toUpperCase())?.symbol ?? code;
+}
+

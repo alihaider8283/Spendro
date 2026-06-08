@@ -3,13 +3,25 @@ import { Colors } from '@/constants/theme';
 import { getOnboardingComplete, setOnboardingComplete } from '@/services/onboardingService';
 import { useAuthStore } from '@/store/authStore';
 import { useSettingsStore } from '@/store/settingsStore';
+import { initDb } from '@/services/dbService';
+import { initializeSyncEngine } from '@/services/syncEngine';
 import { DarkTheme, DefaultTheme, Redirect, Stack, ThemeProvider, type ErrorBoundaryProps } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { enableScreens } from 'react-native-screens';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 enableScreens();
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 export default function RootLayout() {
   const scheme = useColorScheme();
@@ -20,6 +32,28 @@ export default function RootLayout() {
   const { isAuthenticated, initializeAuth } = useAuthStore();
   const { loadSettings } = useSettingsStore();
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<boolean | null>(null);
+
+  // Initialize SQLite database and sync engine
+  useEffect(() => {
+    let cleanupSync: (() => void) | null = null;
+    
+    async function bootstrap() {
+      try {
+        await initDb();
+        cleanupSync = initializeSyncEngine();
+      } catch (err) {
+        console.error('Failed to bootstrap offline-first database:', err);
+      }
+    }
+
+    bootstrap();
+
+    return () => {
+      if (cleanupSync) {
+        cleanupSync();
+      }
+    };
+  }, []);
 
   // Initialize auth and settings state
   useEffect(() => {
@@ -68,29 +102,33 @@ export default function RootLayout() {
 
   if (!hasCompletedOnboarding) {
     return (
-      <ThemeProvider value={scheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <OnboardingScreen onDone={handleOnboardingDone} />
-      </ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider value={scheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <OnboardingScreen onDone={handleOnboardingDone} />
+        </ThemeProvider>
+      </QueryClientProvider>
     );
   }
 
   return (
-    <ThemeProvider value={scheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="expense/add"
-          options={{
-            headerShown: false,
-            presentation: 'modal',
-            animation: 'slide_from_bottom',
-          }}
-        />
-      </Stack>
-      {/* Redirect to tabs if authenticated */}
-      {isAuthenticated && <Redirect href="/(tabs)" />}
-    </ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider value={scheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="expense/add"
+            options={{
+              headerShown: false,
+              presentation: 'modal',
+              animation: 'slide_from_bottom',
+            }}
+          />
+        </Stack>
+        {/* Redirect to tabs if authenticated */}
+        {isAuthenticated && <Redirect href="/(tabs)" />}
+      </ThemeProvider>
+    </QueryClientProvider>
   );
 }
 

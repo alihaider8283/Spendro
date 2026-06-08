@@ -2,14 +2,22 @@ import { Ionicons } from '@expo/vector-icons';
 
 export interface Transaction {
   id: string;
-  title: string;
+  type: 'expense' | 'income';
+  amount: number;
   category: string;
-  amount: number; // negative for expense, positive for income
-  date: Date;
-  icon: keyof typeof Ionicons.glyphMap;
-  iconBgLight: string;
-  iconBgDark: string;
-  iconColor: string;
+  description: string;
+  method: string;
+  transactionDate: number; // millisecond timestamp
+  source: 'manual' | 'voice' | 'receipt_scan';
+  receiptUrl: string | null;
+  syncStatus: 'pending' | 'synced' | 'deleted';
+  createdAt: number;
+  updatedAt: number;
+
+  // UI compatibility fields (computed or optional)
+  title: string;
+  currency: string;
+  merchant?: string | null;
 }
 
 export interface InsightCard {

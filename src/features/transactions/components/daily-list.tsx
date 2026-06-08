@@ -7,6 +7,7 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { ThemedText } from '@/components/themed-text';
 import { ListItem } from '../types';
+import { getCategoryByNameOrId, getCurrencySymbol } from '@/features/expenses/types';
 
 interface DailyListProps {
   groupedDailyItems: { [key: string]: ListItem[] };
@@ -35,9 +36,11 @@ export function DailyList({ groupedDailyItems, monthLabel }: DailyListProps) {
             {groupedDailyItems[groupKey].map((item, idx) => {
               if (item.type === 'transaction') {
                 const trans = item.data;
-                const sign = trans.amount < 0 ? '-' : '+';
-                const amountStr = `${sign}$${Math.abs(trans.amount).toFixed(2)}`;
-                const isExpense = trans.amount < 0;
+                const isExpense = trans.type === 'expense';
+                const sign = isExpense ? '-' : '+';
+                const cat = getCategoryByNameOrId(trans.category);
+                const symbol = getCurrencySymbol(trans.currency);
+                const amountStr = `${sign}${symbol}${trans.amount.toFixed(2)}`;
 
                 return (
                   <Pressable
@@ -50,17 +53,17 @@ export function DailyList({ groupedDailyItems, monthLabel }: DailyListProps) {
                       },
                       pressed && styles.cardPressed,
                     ]}
-                    onPress={() => router.push(`/expense/${trans.id}`)}
+                    onPress={() => router.push(`/expense/${trans.id}` as any)}
                   >
                     <View
                       style={[
                         styles.iconWrapper,
                         {
-                          backgroundColor: scheme === 'dark' ? trans.iconBgDark : trans.iconBgLight,
+                          backgroundColor: scheme === 'dark' ? cat.bgDark : cat.bgLight,
                         },
                       ]}
                     >
-                      <Ionicons name={trans.icon} size={22} color={trans.iconColor} />
+                      <Ionicons name={cat.icon} size={22} color={cat.color} />
                     </View>
                     <View style={styles.textContainer}>
                       <ThemedText style={styles.cardTitle}>{trans.title}</ThemedText>

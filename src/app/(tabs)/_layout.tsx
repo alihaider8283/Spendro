@@ -27,8 +27,8 @@ function TabBarItem({
   return (
     <Pressable {...props} style={styles.tabTrigger}>
       <View style={styles.tabItem}>
-        <Ionicons name={icon} size={25} color={color} />
-        <Text style={[styles.tabLabel, { color }]}>{label}</Text>
+        <Ionicons name={isFocused ? (icon.replace('-outline', '') as TabIconName) : icon} size={25} color={color} />
+        <Text style={[styles.tabLabel, { color, fontWeight: isFocused ? '600' : '400' }]}>{label}</Text>
       </View>
     </Pressable>
   );
@@ -120,6 +120,5 @@ const styles = StyleSheet.create({
   },
   tabLabel: {
     fontSize: 12,
-    fontWeight: '400',
   },
 });

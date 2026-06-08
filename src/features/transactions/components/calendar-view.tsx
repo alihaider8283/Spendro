@@ -7,6 +7,7 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { ThemedText } from '@/components/themed-text';
 import { Transaction } from '../types';
+import { getCategoryByNameOrId, getCurrencySymbol } from '@/features/expenses/types';
 
 interface CalendarViewProps {
   calendarDays: { dayNumber: number | null; dateString: string }[];
@@ -99,7 +100,7 @@ export function CalendarView({
           <ThemedText style={styles.dayDetailsSum}>
             {selectedDateTransactions.length > 0
               ? `-$${selectedDateTransactions
-                  .reduce((sum, t) => sum + (t.amount < 0 ? Math.abs(t.amount) : 0), 0)
+                  .reduce((sum, t) => sum + (t.type === 'expense' ? t.amount : 0), 0)
                   .toFixed(2)}`
               : '$0.00'}
           </ThemedText>
@@ -111,9 +112,11 @@ export function CalendarView({
           </ThemedText>
         ) : (
           selectedDateTransactions.map(trans => {
-            const sign = trans.amount < 0 ? '-' : '+';
-            const amountStr = `${sign}$${Math.abs(trans.amount).toFixed(2)}`;
-            const isExpense = trans.amount < 0;
+            const isExpense = trans.type === 'expense';
+            const sign = isExpense ? '-' : '+';
+            const cat = getCategoryByNameOrId(trans.category);
+            const symbol = getCurrencySymbol(trans.currency);
+            const amountStr = `${sign}${symbol}${trans.amount.toFixed(2)}`;
 
             return (
               <Pressable
@@ -126,17 +129,17 @@ export function CalendarView({
                   },
                   pressed && styles.cardPressed,
                 ]}
-                onPress={() => router.push(`/expense/${trans.id}`)}
+                onPress={() => router.push(`/expense/${trans.id}` as any)}
               >
                 <View
                   style={[
                     styles.iconWrapper,
                     {
-                      backgroundColor: scheme === 'dark' ? trans.iconBgDark : trans.iconBgLight,
+                      backgroundColor: scheme === 'dark' ? cat.bgDark : cat.bgLight,
                     },
                   ]}
                 >
-                  <Ionicons name={trans.icon} size={22} color={trans.iconColor} />
+                  <Ionicons name={cat.icon} size={22} color={cat.color} />
                 </View>
                 <View style={styles.textContainer}>
                   <ThemedText style={styles.cardTitle}>{trans.title}</ThemedText>

@@ -24,7 +24,7 @@ export default function AppTabs() {
           <TabTrigger name="home" href="/" asChild>
             <TabButton>Home</TabButton>
           </TabTrigger>
-          <TabTrigger name="scan" href="/scan" asChild>
+          <TabTrigger name="scan" href={"/scan" as any} asChild>
             <TabButton>Scan</TabButton>
           </TabTrigger>
           <TabTrigger name="analytics" href="/analytics" asChild>

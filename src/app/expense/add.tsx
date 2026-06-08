@@ -2,6 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   Platform,
   Pressable,
   StyleSheet,
@@ -25,6 +27,7 @@ import {
   PaymentMethod,
   TransactionType,
 } from '@/features/expenses/types';
+import { useAddTransaction } from '@/hooks/useTransactions';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -159,11 +162,37 @@ export default function AddExpenseScreen() {
     setActivePanel('keypad');
   }, []);
 
-  /** Final save */
-  const handleSave = useCallback(() => {
-    // TODO: wire up to expenseService.addExpense (Firestore)
-    router.back();
-  }, [router]);
+  /** Final save — persist to SQLite */
+  const addTransaction = useAddTransaction();
+
+  const handleSave = useCallback(async () => {
+    const parsedAmount = parseFloat(amount);
+    if (!parsedAmount || parsedAmount <= 0) {
+      Alert.alert('Invalid Amount', 'Please enter a valid amount greater than 0.');
+      return;
+    }
+
+    try {
+      await addTransaction.mutateAsync({
+        type,
+        amount: parsedAmount,
+        category: selectedCategory.label,
+        description: note.trim() || selectedCategory.label,
+        method: selectedPayment.id,
+        transactionDate: date.getTime(),
+        source: 'manual',
+        receiptUrl: null,
+        // UI display fields
+        title: note.trim() || selectedCategory.label,
+        currency,
+        merchant: null,
+      });
+      router.back();
+    } catch (err) {
+      console.error('Failed to save transaction:', err);
+      Alert.alert('Error', 'Failed to save transaction. Please try again.');
+    }
+  }, [addTransaction, amount, type, selectedCategory, note, selectedPayment, date, currency, router]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // Render
@@ -217,7 +246,7 @@ export default function AddExpenseScreen() {
         </View>
 
         {/* Expense / Income type pills */}
-        {/* <View style={styles.typePills}>
+        <View style={styles.typePills}>
           <Pressable
             style={[styles.typePill, isExpense && styles.typePillActive]}
             onPress={() => setType('expense')}
@@ -238,7 +267,7 @@ export default function AddExpenseScreen() {
               Income
             </Text>
           </Pressable>
-        </View> */}
+        </View>
 
         {/* Amount display */}
         <Text style={styles.amountLabel}>Total Amount</Text>
@@ -381,13 +410,21 @@ export default function AddExpenseScreen() {
               styles.saveButton,
               { backgroundColor: headerBg },
               pressed && styles.saveButtonPressed,
+              addTransaction.isPending && { opacity: 0.7 },
             ]}
             onPress={handleSave}
+            disabled={addTransaction.isPending}
             accessibilityRole="button"
             accessibilityLabel="Save transaction"
           >
-            <Ionicons name="checkmark-circle-outline" size={20} color="#fff" />
-            <Text style={styles.saveButtonText}>Save Transaction</Text>
+            {addTransaction.isPending ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Ionicons name="checkmark-circle-outline" size={20} color="#fff" />
+            )}
+            <Text style={styles.saveButtonText}>
+              {addTransaction.isPending ? 'Saving...' : 'Save Transaction'}
+            </Text>
           </Pressable>
         </View>
       )}

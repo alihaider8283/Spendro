@@ -16,141 +16,29 @@ import { Colors, Spacing } from '@/constants/theme';
 import { FAB } from '@/components/floating-action-button';
 import { CalendarView } from '@/features/transactions/components/calendar-view';
 import { DailyList } from '@/features/transactions/components/daily-list';
-import { ListItem, Transaction } from '@/features/transactions/types';
+import { ListItem } from '@/features/transactions/types';
+import { useTransactions } from '@/hooks/useTransactions';
 
 // Helper to format Date to string like "2026-06-06"
 const formatDateString = (date: Date) => {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 };
 
-// Raw Mock Data for Transactions (spread across May, June, July 2026)
-const MOCK_TRANSACTIONS: Transaction[] = [
-  // June 2026
-  {
-    id: 't1',
-    title: 'Starbucks',
-    category: 'Dining & Drinks',
-    amount: -12.50,
-    date: new Date(2026, 5, 6), // June 6, 2026
-    icon: 'cafe-outline',
-    iconBgLight: '#E6F4EA',
-    iconBgDark: '#1B3A24',
-    iconColor: '#137333',
-  },
-  {
-    id: 't2',
-    title: 'Whole Foods',
-    category: 'Groceries',
-    amount: -84.22,
-    date: new Date(2026, 5, 6),
-    icon: 'basket-outline',
-    iconBgLight: '#E6F4EA',
-    iconBgDark: '#1B3A24',
-    iconColor: '#137333',
-  },
-  {
-    id: 't3',
-    title: 'Uber',
-    category: 'Transport',
-    amount: -24.15,
-    date: new Date(2026, 5, 5), // June 5, 2026
-    icon: 'car-outline',
-    iconBgLight: '#F1F3F4',
-    iconBgDark: '#303134',
-    iconColor: '#5F6368',
-  },
-  {
-    id: 't4',
-    title: 'Electric Bill',
-    category: 'Utilities',
-    amount: -142.00,
-    date: new Date(2026, 5, 5),
-    icon: 'flash-outline',
-    iconBgLight: '#E8F0FE',
-    iconBgDark: '#1A365D',
-    iconColor: '#1A73E8',
-  },
-  {
-    id: 't5',
-    title: 'Netflix Premium',
-    category: 'Entertainment',
-    amount: -19.99,
-    date: new Date(2026, 5, 15), // June 15, 2026
-    icon: 'film-outline',
-    iconBgLight: '#FDF2E9',
-    iconBgDark: '#3E2516',
-    iconColor: '#D56B2D',
-  },
-  {
-    id: 't6',
-    title: 'Salary Deposit',
-    category: 'Income',
-    amount: 3200.00,
-    date: new Date(2026, 5, 1), // June 1, 2026
-    icon: 'cash-outline',
-    iconBgLight: '#E6F4EA',
-    iconBgDark: '#1B3A24',
-    iconColor: '#137333',
-  },
-  // May 2026
-  {
-    id: 't7',
-    title: 'Amazon Shopping',
-    category: 'Shopping',
-    amount: -65.40,
-    date: new Date(2026, 4, 18), // May 18, 2026
-    icon: 'cart-outline',
-    iconBgLight: '#FCE8E6',
-    iconBgDark: '#3C1E1E',
-    iconColor: '#D93025',
-  },
-  {
-    id: 't8',
-    title: 'Target',
-    category: 'Shopping',
-    amount: -32.18,
-    date: new Date(2026, 4, 12),
-    icon: 'cart-outline',
-    iconBgLight: '#FCE8E6',
-    iconBgDark: '#3C1E1E',
-    iconColor: '#D93025',
-  },
-  // July 2026
-  {
-    id: 't9',
-    title: 'Gym Membership',
-    category: 'Health & Fitness',
-    amount: -45.00,
-    date: new Date(2026, 6, 2), // July 2, 2026
-    icon: 'barbell-outline',
-    iconBgLight: '#F3E8FD',
-    iconBgDark: '#2D1B4E',
-    iconColor: '#8430D9',
-  },
-];
 
-// Insight Cards
-const MOCK_INSIGHTS = [
-  {
-    id: 'i1',
-    type: 'insight' as const,
-    title: 'Financial Insight',
-    description: 'Your Uber spending is 12% lower than last month. Great job managing commute costs!',
-    icon: 'sparkles-outline' as const,
-    color: '#1A73E8',
-  },
-];
 
 export default function TransactionsScreen() {
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
 
+  // Fetch transactions exclusively from SQLite — no mock fallback
+  const { data: transactions = [] } = useTransactions();
+
   // Interactivity States
-  const [currentDate, setCurrentDate] = useState<Date>(new Date(2026, 5, 1)); // Default: June 2026
+  const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [activeTab, setActiveTab] = useState<'daily' | 'calendar'>('daily');
   const [searchActive, setSearchActive] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [selectedCalendarDate, setSelectedCalendarDate] = useState<string>(formatDateString(new Date(2026, 5, 6)));
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<string>(formatDateString(new Date()));
 
   // Navigation handlers
   const handlePrevMonth = () => {
@@ -176,10 +64,11 @@ export default function TransactionsScreen() {
 
   // Filter transactions based on current selected month/year and search query
   const filteredTransactions = useMemo(() => {
-    return MOCK_TRANSACTIONS.filter(t => {
+    return transactions.filter(t => {
+      const tDate = new Date(t.transactionDate);
       const matchesMonth =
-        t.date.getMonth() === currentDate.getMonth() &&
-        t.date.getFullYear() === currentDate.getFullYear();
+        tDate.getMonth() === currentDate.getMonth() &&
+        tDate.getFullYear() === currentDate.getFullYear();
 
       if (!matchesMonth) return false;
 
@@ -194,7 +83,7 @@ export default function TransactionsScreen() {
 
       return true;
     });
-  }, [currentDate, searchQuery]);
+  }, [transactions, currentDate, searchQuery]);
 
   // Grouped Daily Transactions
   const groupedDailyItems = useMemo(() => {
@@ -202,16 +91,18 @@ export default function TransactionsScreen() {
 
     filteredTransactions.forEach(t => {
       // Determine header name
-      const today = new Date(2026, 5, 6); // Mocked today
-      const yesterday = new Date(2026, 5, 5); // Mocked yesterday
+      const today = new Date();
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const tDate = new Date(t.transactionDate);
 
       let groupKey = '';
-      if (formatDateString(t.date) === formatDateString(today)) {
+      if (formatDateString(tDate) === formatDateString(today)) {
         groupKey = 'TODAY';
-      } else if (formatDateString(t.date) === formatDateString(yesterday)) {
+      } else if (formatDateString(tDate) === formatDateString(yesterday)) {
         groupKey = 'YESTERDAY';
       } else {
-        groupKey = t.date.toLocaleString('en-US', { month: 'long', day: 'numeric' }).toUpperCase();
+        groupKey = tDate.toLocaleString('en-US', { month: 'long', day: 'numeric' }).toUpperCase();
       }
 
       if (!groups[groupKey]) {
@@ -220,17 +111,6 @@ export default function TransactionsScreen() {
 
       groups[groupKey].push({ type: 'transaction', data: t });
     });
-
-    // Inject insight card for demonstration (under Yesterday, if Yesterday exists)
-    const keys = Object.keys(groups);
-    if (keys.includes('YESTERDAY')) {
-      const yesterdayGroup = groups['YESTERDAY'];
-      if (yesterdayGroup.length > 0) {
-        yesterdayGroup.splice(1, 0, { type: 'insight', data: MOCK_INSIGHTS[0] });
-      } else {
-        yesterdayGroup.push({ type: 'insight', data: MOCK_INSIGHTS[0] });
-      }
-    }
 
     return groups;
   }, [filteredTransactions]);
@@ -265,45 +145,33 @@ export default function TransactionsScreen() {
 
   // Get selected day transactions
   const selectedDateTransactions = useMemo(() => {
-    return MOCK_TRANSACTIONS.filter(
-      t => formatDateString(t.date) === selectedCalendarDate
+    return transactions.filter(
+      t => formatDateString(new Date(t.transactionDate)) === selectedCalendarDate
     );
-  }, [selectedCalendarDate]);
+  }, [transactions, selectedCalendarDate]);
 
   // Total daily expenditure map for the calendar cells
   const dailyTotalMap = useMemo(() => {
     const totals: { [key: string]: number } = {};
-    MOCK_TRANSACTIONS.forEach(t => {
-      const dateStr = formatDateString(t.date);
-      if (t.amount < 0) {
-        totals[dateStr] = (totals[dateStr] || 0) + Math.abs(t.amount);
+    transactions.forEach(t => {
+      const dateStr = formatDateString(new Date(t.transactionDate));
+      if (t.type === 'expense') {
+        totals[dateStr] = (totals[dateStr] || 0) + t.amount;
       }
     });
     return totals;
-  }, []);
+  }, [transactions]);
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: colors.background }]} edges={['top']}>
-      {/* Header Container */}
+      {/* Header — matches Settings tab design */}
       <View style={styles.header}>
-        {/* Date Month Selector in top-left position */}
-        <View style={styles.monthSelectorContainer}>
-          <Pressable onPress={handlePrevMonth} style={styles.arrowButton} accessibilityRole="button" accessibilityLabel="Previous month">
-            <Ionicons name="chevron-back" size={16} color="#3369F6" />
-          </Pressable>
-          <ThemedText style={styles.monthText}>{monthLabel}</ThemedText>
-          <Pressable onPress={handleNextMonth} style={styles.arrowButton} accessibilityRole="button" accessibilityLabel="Next month">
-            <Ionicons name="chevron-forward" size={16} color="#3369F6" />
-          </Pressable>
-        </View>
-
-        {/* Search Toggle in top-right position */}
+        <ThemedText type="subtitle" style={styles.headerTitle}>Transactions</ThemedText>
         <Pressable
           style={({ pressed }) => [
-            styles.headerButton,
-            styles.searchCircle,
+            styles.iconButton,
             { backgroundColor: colors.backgroundElement },
-            pressed && styles.headerButtonPressed,
+            pressed && { opacity: 0.7 },
           ]}
           onPress={() => {
             setSearchActive(!searchActive);
@@ -312,7 +180,18 @@ export default function TransactionsScreen() {
           accessibilityRole="button"
           accessibilityLabel="Search transactions"
         >
-          <Ionicons name={searchActive ? 'close' : 'search'} size={20} color={colors.text} />
+          <Ionicons name={searchActive ? 'close' : 'search'} size={22} color={colors.text} />
+        </Pressable>
+      </View>
+
+      {/* Month Navigator — below header */}
+      <View style={styles.monthNavRow}>
+        <Pressable onPress={handlePrevMonth} style={styles.arrowButton} accessibilityRole="button" accessibilityLabel="Previous month">
+          <Ionicons name="chevron-back" size={18} color="#208AEF" />
+        </Pressable>
+        <ThemedText style={styles.monthText}>{monthLabel}</ThemedText>
+        <Pressable onPress={handleNextMonth} style={styles.arrowButton} accessibilityRole="button" accessibilityLabel="Next month">
+          <Ionicons name="chevron-forward" size={18} color="#208AEF" />
         </Pressable>
       </View>
 
@@ -401,39 +280,38 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
   },
+  // Header: matches Settings tab
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.two,
+    paddingTop: Spacing.three,
+    paddingBottom: Spacing.two,
   },
-  headerButton: {
+  headerTitle: {
+    fontWeight: '800',
+  },
+  iconButton: {
     width: 40,
     height: 40,
-    borderRadius: 12,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerButtonPressed: {
-    opacity: 0.7,
-  },
-  searchCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-  },
-  monthSelectorContainer: {
+  // Month navigator row below header
+  monthNavRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    paddingHorizontal: Spacing.four,
+    paddingBottom: Spacing.two,
     gap: Spacing.two,
   },
   arrowButton: {
     padding: Spacing.one,
   },
   monthText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
   },
   searchBarContainer: {

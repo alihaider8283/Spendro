@@ -1,6 +1,7 @@
 import { Colors, Spacing } from '@/constants/theme';
 import { useAuthStore } from '@/store/authStore';
 import { useSettingsStore } from '@/store/settingsStore';
+import { triggerSync } from '@/services/syncEngine';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Ionicons } from '@expo/vector-icons';
@@ -34,10 +35,12 @@ export default function SettingsScreen() {
     aiAutoCategorization,
     notifications,
     currency,
+    cloudBackup,
     setThemeMode,
     setAiAutoCategorization,
     setNotifications,
     setCurrency,
+    setCloudBackup,
   } = useSettingsStore();
 
   // Generate initials for the profile picture placeholder
@@ -284,6 +287,61 @@ export default function SettingsScreen() {
                 <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
               </View>
             </Pressable>
+
+            <View style={[styles.divider, { backgroundColor: colors.background }]} />
+
+            {/* Cloud Backup */}
+            <View style={styles.listItemWithSub}>
+              <View style={styles.listItemLeft}>
+                <View style={[styles.itemIconContainer, { backgroundColor: theme === 'dark' ? '#1E3A3A' : '#E6F4EA' }]}>
+                  <Ionicons name="cloud-upload-outline" size={20} color={theme === 'dark' ? '#34D399' : '#10B981'} />
+                </View>
+                <View style={styles.itemTextWithSub}>
+                  <ThemedText style={styles.listItemText}>Cloud Backup</ThemedText>
+                  <ThemedText style={[styles.listItemSubText, { color: colors.textSecondary }]}>
+                    {!isAuthenticated ? 'Log in to enable backup' : 'Sync local data to Firestore'}
+                  </ThemedText>
+                </View>
+              </View>
+              <Switch
+                disabled={!isAuthenticated}
+                value={cloudBackup}
+                onValueChange={(val) => {
+                  setCloudBackup(val);
+                  if (val) {
+                    triggerSync().catch(console.error);
+                  }
+                }}
+                trackColor={{ false: '#D1D5DB', true: primaryColor }}
+                thumbColor="#FFFFFF"
+                ios_backgroundColor={colors.backgroundSelected}
+              />
+            </View>
+
+            {isAuthenticated && cloudBackup && (
+              <>
+                <View style={[styles.divider, { backgroundColor: colors.background }]} />
+                <Pressable
+                  onPress={async () => {
+                    try {
+                      await triggerSync();
+                      Alert.alert('Sync Complete', 'Your local data is now synchronized with the cloud.');
+                    } catch (err) {
+                      Alert.alert('Sync Failed', 'Could not sync. Please check your network connection.');
+                    }
+                  }}
+                  style={({ pressed }) => [styles.listItem, pressed && { backgroundColor: colors.backgroundSelected }]}
+                >
+                  <View style={styles.listItemLeft}>
+                    <View style={[styles.itemIconContainer, { backgroundColor: colors.background }]}>
+                      <Ionicons name="sync-outline" size={20} color={colors.textSecondary} />
+                    </View>
+                    <ThemedText style={styles.listItemText}>Sync Now</ThemedText>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+                </Pressable>
+              </>
+            )}
 
             <View style={[styles.divider, { backgroundColor: colors.background }]} />
 
