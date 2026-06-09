@@ -1,3 +1,5 @@
+import { Colors, Spacing } from '@/constants/theme';
+import { CURRENCIES } from '@/features/expenses/types';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback } from 'react';
 import {
@@ -7,8 +9,6 @@ import {
   useColorScheme,
   View,
 } from 'react-native';
-import { Colors, Spacing } from '@/constants/theme';
-import { CURRENCIES } from '@/features/expenses/types';
 
 interface AmountKeypadProps {
   amount: string;
@@ -17,6 +17,7 @@ interface AmountKeypadProps {
   onBackspace: () => void;
   onDone: () => void;
   onCurrencyChange: () => void;
+  onClose: () => void;
 }
 
 export function AmountKeypad({
@@ -25,6 +26,7 @@ export function AmountKeypad({
   onBackspace,
   onDone,
   onCurrencyChange,
+  onClose,
 }: AmountKeypadProps) {
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
@@ -114,7 +116,7 @@ export function AmountKeypad({
               { backgroundColor: colors.backgroundElement },
               pressed && { opacity: 0.6 },
             ]}
-            onPress={onCurrencyChange}
+            onPress={onClose}
             accessibilityRole="button"
             accessibilityLabel="Open currency options"
           >
@@ -154,7 +156,7 @@ export function AmountKeypad({
         {renderNumKey('7')}
         {renderNumKey('8')}
         {renderNumKey('9')}
-        {renderIconKey('calculator-outline', () => {}, 'Calculator')}
+        {renderIconKey('calculator-outline', () => { }, 'Calculator')}
       </View>
 
       {/* Row 4: 0  .  [spacer]  Done */}

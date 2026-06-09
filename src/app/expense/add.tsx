@@ -14,18 +14,15 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ThemedText } from '@/components/themed-text';
 import { Colors, Spacing } from '@/constants/theme';
 import { AmountKeypad } from '@/features/expenses/components/amount-keypad';
 import { CategoryPanel } from '@/features/expenses/components/category-panel';
 import { PaymentMethodPanel } from '@/features/expenses/components/payment-method-panel';
 import {
-  CATEGORIES,
   Category,
   CURRENCIES,
-  PAYMENT_METHODS,
   PaymentMethod,
-  TransactionType,
+  TransactionType
 } from '@/features/expenses/types';
 import { useAddTransaction } from '@/hooks/useTransactions';
 
@@ -64,9 +61,9 @@ export default function AddExpenseScreen() {
   const [amount, setAmount] = useState<string>('0');
   const [currency, setCurrency] = useState<string>('PKR');
   const [note, setNote] = useState<string>('');
-  const [date] = useState<Date>(new Date());
-  const [selectedCategory, setSelectedCategory] = useState<Category>(CATEGORIES[0]);
-  const [selectedPayment, setSelectedPayment] = useState<PaymentMethod>(PAYMENT_METHODS[0]);
+  const [date, setDate] = useState<Date>(new Date());
+  const [selectedCategory, setSelectedCategory] = useState<Category>();
+  const [selectedPayment, setSelectedPayment] = useState<PaymentMethod>();
 
   // ── Panel flow state ─────────────────────────────────────────────────────
   // Starts on 'keypad' so the keypad is immediately visible when screen opens
@@ -97,7 +94,7 @@ export default function AddExpenseScreen() {
 
   const isExpense = type === 'expense';
   const headerBg = isExpense ? '#3369F6' : '#137333';
-  const categoryBg = isDark ? selectedCategory.bgDark : selectedCategory.bgLight;
+  const categoryBg = isDark ? selectedCategory?.bgDark : selectedCategory?.bgLight;
 
   // ── Keypad handlers ──────────────────────────────────────────────────────
   const handleKeyPress = useCallback((key: string) => {
@@ -128,7 +125,13 @@ export default function AddExpenseScreen() {
 
   /** Keypad "Done" → move to category panel */
   const handleKeypadDone = useCallback(() => {
-    setActivePanel('category');
+    if (!selectedCategory?.id) {
+      setActivePanel('category');
+    } else if (!selectedPayment?.id) {
+      setActivePanel('payment');
+    } else {
+      setActivePanel(null);
+    }
   }, []);
 
   /** Category selected → move to payment panel */
@@ -159,7 +162,13 @@ export default function AddExpenseScreen() {
 
   /** Panel close (✕) → back to keypad */
   const handlePanelClose = useCallback(() => {
-    setActivePanel('keypad');
+    if (activePanel === 'category' && !selectedPayment?.id) {
+      setActivePanel('payment');
+    } else if (activePanel === 'payment' && !selectedCategory?.id) {
+      setActivePanel('category');
+    } else {
+      setActivePanel(null);
+    }
   }, []);
 
   /** Final save — persist to SQLite */
@@ -204,7 +213,7 @@ export default function AddExpenseScreen() {
       edges={['top', 'left', 'right']}
     >
       {/* ── Top Bar ── */}
-      <View style={styles.topBar}>
+      {/* <View style={styles.topBar}>
         <Pressable
           onPress={() => router.back()}
           style={({ pressed }) => [styles.iconBtn, pressed && { opacity: 0.6 }]}
@@ -223,7 +232,7 @@ export default function AddExpenseScreen() {
         >
           <Ionicons name="ellipsis-vertical" size={20} color={colors.text} />
         </Pressable>
-      </View>
+      </View> */}
 
       {/* ── Amount Card (tappable → re-opens keypad) ── */}
       <Pressable
@@ -301,7 +310,7 @@ export default function AddExpenseScreen() {
             { borderBottomColor: isDark ? colors.background : '#F0F1F7' },
             activePanel === 'category' && [
               styles.formRowActive,
-              { borderLeftColor: selectedCategory.color },
+              { borderLeftColor: selectedCategory?.color },
             ],
             pressed && { opacity: 0.75 },
           ]}
@@ -310,18 +319,18 @@ export default function AddExpenseScreen() {
           accessibilityLabel="Select category"
         >
           <View style={[styles.rowIconWrap, { backgroundColor: categoryBg }]}>
-            <Ionicons name={selectedCategory.icon} size={20} color={selectedCategory.color} />
+            <Ionicons name={selectedCategory?.icon} size={20} color={selectedCategory?.color} />
           </View>
           <View style={styles.rowContent}>
             <Text style={[styles.rowLabel, { color: colors.textSecondary }]}>Category</Text>
             <Text style={[styles.rowValue, { color: colors.text }]}>
-              {selectedCategory.label}
+              {selectedCategory?.label}
             </Text>
           </View>
           <Ionicons
             name={activePanel === 'category' ? 'chevron-up' : 'chevron-down'}
             size={18}
-            color={activePanel === 'category' ? selectedCategory.color : colors.textSecondary}
+            color={activePanel === 'category' ? selectedCategory?.color : colors.textSecondary}
           />
         </Pressable>
 
@@ -343,13 +352,13 @@ export default function AddExpenseScreen() {
               { backgroundColor: isDark ? colors.background : '#E8F0FE' },
             ]}
           >
-            <Ionicons name={selectedPayment.icon} size={20} color="#3369F6" />
+            <Ionicons name={selectedPayment?.icon} size={20} color="#3369F6" />
           </View>
           <View style={styles.rowContent}>
             <Text style={[styles.rowLabel, { color: colors.textSecondary }]}>
               Payment Method
             </Text>
-            <Text style={[styles.rowValue, { color: colors.text }]}>{selectedPayment.label}</Text>
+            <Text style={[styles.rowValue, { color: colors.text }]}>{selectedPayment?.label}</Text>
           </View>
           <Ionicons
             name={activePanel === 'payment' ? 'chevron-up' : 'chevron-down'}
@@ -389,7 +398,7 @@ export default function AddExpenseScreen() {
       </View>
 
       {/* ── AI Hint (only when keypad is open) ── */}
-      {activePanel === 'keypad' && (
+      {/* {activePanel === 'keypad' && (
         <View
           style={[
             styles.aiHintCard,
@@ -401,7 +410,7 @@ export default function AddExpenseScreen() {
             {aiSuggestion}
           </Text>
         </View>
-      )}
+      )} */}
 
       {activePanel === null && (
         <View style={styles.saveArea}>
@@ -438,13 +447,14 @@ export default function AddExpenseScreen() {
             onPress={handleKeyPress}
             onBackspace={handleBackspace}
             onDone={handleKeypadDone}
+            onClose={handlePanelClose}
             onCurrencyChange={handleCurrencyChange}
           />
         )}
 
         {activePanel === 'category' && (
           <CategoryPanel
-            selectedId={selectedCategory.id}
+            selectedId={selectedCategory?.id || ''}
             onSelect={handleCategorySelect}
             onClose={handlePanelClose}
           />
@@ -452,7 +462,7 @@ export default function AddExpenseScreen() {
 
         {activePanel === 'payment' && (
           <PaymentMethodPanel
-            selectedId={selectedPayment.id}
+            selectedId={selectedPayment?.id || ''}
             onSelect={handlePaymentSelect}
             onClose={handlePanelClose}
           />

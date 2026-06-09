@@ -1,18 +1,19 @@
 import { OnboardingScreen } from '@/components/onboarding-screen';
 import { Colors } from '@/constants/theme';
+import { initDb } from '@/services/dbService';
 import { getOnboardingComplete, setOnboardingComplete } from '@/services/onboardingService';
+import { initializeSyncEngine } from '@/services/syncEngine';
 import { useAuthStore } from '@/store/authStore';
 import { useSettingsStore } from '@/store/settingsStore';
-import { initDb } from '@/services/dbService';
-import { initializeSyncEngine } from '@/services/syncEngine';
+import * as Clarity from '@microsoft/react-native-clarity';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { DarkTheme, DefaultTheme, Redirect, Stack, ThemeProvider, type ErrorBoundaryProps } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { enableScreens } from 'react-native-screens';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-enableScreens();
+enableScreens(true);
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -22,6 +23,13 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+
+if(!__DEV__){
+  Clarity.initialize('x4bzw27rao', {
+  logLevel: Clarity.LogLevel.None, // Note: Use "LogLevel.Verbose" value while testing to debug initialization issues.
+});
+}
 
 export default function RootLayout() {
   const scheme = useColorScheme();
@@ -54,6 +62,8 @@ export default function RootLayout() {
       }
     };
   }, []);
+
+  
 
   // Initialize auth and settings state
   useEffect(() => {
