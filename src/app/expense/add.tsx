@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -9,11 +9,13 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  ToastAndroid,
   useColorScheme,
-  View,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ThemedText } from '@/components/themed-text';
 import { Colors, Spacing } from '@/constants/theme';
 import { AmountKeypad } from '@/features/expenses/components/amount-keypad';
 import { CategoryPanel } from '@/features/expenses/components/category-panel';
@@ -21,16 +23,20 @@ import { PaymentMethodPanel } from '@/features/expenses/components/payment-metho
 import {
   Category,
   CURRENCIES,
+  getCategoryByNameOrId,
+  PAYMENT_METHODS,
   PaymentMethod,
-  TransactionType
+  TransactionType,
 } from '@/features/expenses/types';
-import { useAddTransaction } from '@/hooks/useTransactions';
+import { useAddTransaction, useUpdateTransaction } from '@/hooks/useTransactions';
+import { transactionRepository } from '@/services/transactionRepository';
+import DateTimePicker from '@expo/ui/community/datetime-picker';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-type ActivePanel = 'keypad' | 'category' | 'payment' | null;
+type ActivePanel = 'keypad' | 'category' | 'payment' | 'note' | null;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -46,6 +52,20 @@ function formatDate(date: Date): string {
   return `${date.getDate()}/${String(date.getMonth() + 1).padStart(2, '0')}/${yr} (${day}) ${hh}:${mm} ${ampm}`;
 }
 
+function formatDateOnly(date: Date): string {
+  const yr = date.getFullYear();
+  const dd = String(date.getDate()).padStart(2, '0');
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  return `${dd}/${mm}/${yr}`;
+}
+
+function formatTimeOnly(date: Date): string {
+  const hh = date.getHours() % 12 || 12;
+  const min = String(date.getMinutes()).padStart(2, '0');
+  const ampm = date.getHours() < 12 ? 'am' : 'pm';
+  return `${hh}:${min} ${ampm}`;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Screen
 // ─────────────────────────────────────────────────────────────────────────────
@@ -57,17 +77,83 @@ export default function AddExpenseScreen() {
   const isDark = scheme === 'dark';
 
   // ── Form state ──────────────────────────────────────────────────────────
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const isEditing = Boolean(id);
+
   const [type, setType] = useState<TransactionType>('expense');
   const [amount, setAmount] = useState<string>('0');
   const [currency, setCurrency] = useState<string>('PKR');
   const [note, setNote] = useState<string>('');
   const [date, setDate] = useState<Date>(new Date());
-  const [selectedCategory, setSelectedCategory] = useState<Category>();
-  const [selectedPayment, setSelectedPayment] = useState<PaymentMethod>();
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+  const [selectedPayment, setSelectedPayment] = useState<PaymentMethod | null>(null);
+  const [loadingTransaction, setLoadingTransaction] = useState<boolean>(false);
 
   // ── Panel flow state ─────────────────────────────────────────────────────
   // Starts on 'keypad' so the keypad is immediately visible when screen opens
   const [activePanel, setActivePanel] = useState<ActivePanel>('keypad');
+
+  // ── Determine next required panel based on form state ───────────────────
+  const getNextRequiredPanel = useCallback((): ActivePanel => {
+    const parsedAmount = parseFloat(amount);
+    if (!parsedAmount || parsedAmount <= 0) return 'keypad';
+    if (!selectedCategory?.id) return 'category';
+    if (!selectedPayment?.id) return 'payment';
+    // if(!note) return 'note'
+    return null;
+  }, [amount, selectedCategory?.id, selectedPayment?.id]);
+
+  // ── Date/time picker state & handlers ──────────────────────────────────
+  const [showPicker, setShowPicker] = useState<boolean>(false);
+  const [pickerMode, setPickerMode] = useState<'date' | 'time'>('date');
+
+  const loadTransaction = useCallback(async (transactionId: string) => {
+    try {
+      setLoadingTransaction(true);
+      const transaction = await transactionRepository.getById(transactionId);
+      if (!transaction) {
+        Alert.alert('Not found', 'Transaction not found for editing.');
+        return;
+      }
+      setType(transaction.type);
+      setAmount(transaction.amount.toString());
+      setCurrency(transaction.currency || 'PKR');
+      setNote(transaction.description || '');
+      setDate(new Date(transaction.transactionDate));
+      setSelectedCategory(getCategoryByNameOrId(transaction.category));
+      setSelectedPayment(
+        PAYMENT_METHODS.find((method) => method.id === transaction.method) || null,
+      );
+    } catch (error) {
+      console.error('Failed to load transaction for edit:', error);
+      Alert.alert('Error', 'Unable to load transaction for editing.');
+    } finally {
+      setLoadingTransaction(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (id) {
+      loadTransaction(id);
+    }
+  }, [id, loadTransaction]);
+
+  const openDatePicker = useCallback(() => {
+    setPickerMode('date');
+    setShowPicker(true);
+  }, []);
+
+  const openTimePicker = useCallback(() => {
+    setPickerMode('time');
+    setShowPicker(true);
+  }, []);
+
+  const onPickerValueChange = useCallback((event: any, selected?: Date) => {
+    if (selected) setDate(selected);
+    setShowPicker(false);
+    const next = getNextRequiredPanel();
+    setActivePanel(next);
+  }, [getNextRequiredPanel]);
 
   // ── Derived ─────────────────────────────────────────────────────────────
   const currencySymbol = useMemo(
@@ -123,22 +209,22 @@ export default function AddExpenseScreen() {
 
   // ── Panel flow handlers ──────────────────────────────────────────────────
 
-  /** Keypad "Done" → move to category panel */
+  /** Keypad "Done" → move to next required panel */
   const handleKeypadDone = useCallback(() => {
-    if (!selectedCategory?.id) {
-      setActivePanel('category');
-    } else if (!selectedPayment?.id) {
+    const nextPanel = getNextRequiredPanel();
+    setActivePanel(nextPanel);
+  }, [getNextRequiredPanel]);
+
+  /** Category selected → move to next required panel */
+  const handleCategorySelect = useCallback((cat: Category) => {
+    setSelectedCategory(cat);
+    // Check if payment is needed
+    if (!selectedPayment?.id) {
       setActivePanel('payment');
     } else {
       setActivePanel(null);
     }
-  }, []);
-
-  /** Category selected → move to payment panel */
-  const handleCategorySelect = useCallback((cat: Category) => {
-    setSelectedCategory(cat);
-    setActivePanel('payment');
-  }, []);
+  }, [selectedPayment?.id]);
 
   /** Payment selected → close all panels (null = ready to save) */
   const handlePaymentSelect = useCallback((method: PaymentMethod) => {
@@ -160,52 +246,69 @@ export default function AddExpenseScreen() {
     setActivePanel('keypad');
   }, []);
 
-  /** Panel close (✕) → back to keypad */
+  /** Panel close (✕) → move to next required panel or null */
   const handlePanelClose = useCallback(() => {
-    if (activePanel === 'category' && !selectedPayment?.id) {
-      setActivePanel('payment');
-    } else if (activePanel === 'payment' && !selectedCategory?.id) {
-      setActivePanel('category');
-    } else {
-      setActivePanel(null);
-    }
+    setActivePanel(null);
   }, []);
 
   /** Final save — persist to SQLite */
   const addTransaction = useAddTransaction();
+  const updateTransaction = useUpdateTransaction();
 
   const handleSave = useCallback(async () => {
     const parsedAmount = parseFloat(amount);
-    if (!parsedAmount || parsedAmount <= 0) {
-      Alert.alert('Invalid Amount', 'Please enter a valid amount greater than 0.');
+    if (!parsedAmount || parsedAmount <= 0 || !selectedCategory || !selectedPayment) {
+      handleKeypadDone();
+      ToastAndroid.show('Please enter required fields', ToastAndroid.TOP);
       return;
     }
 
+    const payload = {
+      type,
+      amount: parsedAmount,
+      category: selectedCategory.label,
+      description: note.trim() || selectedCategory.label,
+      method: selectedPayment.id || '',
+      transactionDate: date.getTime(),
+      source: 'manual' as const,
+      receiptUrl: null,
+      // UI display fields
+      title: note.trim() || selectedCategory.label,
+      currency,
+      merchant: null,
+    };
+
     try {
-      await addTransaction.mutateAsync({
-        type,
-        amount: parsedAmount,
-        category: selectedCategory.label,
-        description: note.trim() || selectedCategory.label,
-        method: selectedPayment.id,
-        transactionDate: date.getTime(),
-        source: 'manual',
-        receiptUrl: null,
-        // UI display fields
-        title: note.trim() || selectedCategory.label,
-        currency,
-        merchant: null,
-      });
-      router.back();
+      if (isEditing && id) {
+        await updateTransaction.mutateAsync({ id, updates: payload });
+        router.push('/(tabs)/transactions')
+      } else {
+        await addTransaction.mutateAsync(payload);
+        router.back();
+      }
     } catch (err) {
       console.error('Failed to save transaction:', err);
       Alert.alert('Error', 'Failed to save transaction. Please try again.');
     }
-  }, [addTransaction, amount, type, selectedCategory, note, selectedPayment, date, currency, router]);
+  }, [addTransaction, amount, type, selectedCategory, note, selectedPayment, date, currency, router, isEditing, id, updateTransaction]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // Render
   // ─────────────────────────────────────────────────────────────────────────
+
+  if (isEditing && loadingTransaction) {
+    return (
+      <SafeAreaView
+        style={[styles.screen, { backgroundColor: colors.background }]}
+        edges={['top', 'left', 'right']}
+      >
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.text} />
+          <ThemedText style={styles.loadingText}>Loading transaction...</ThemedText>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView
@@ -213,7 +316,7 @@ export default function AddExpenseScreen() {
       edges={['top', 'left', 'right']}
     >
       {/* ── Top Bar ── */}
-      {/* <View style={styles.topBar}>
+      <View style={styles.topBar}>
         <Pressable
           onPress={() => router.back()}
           style={({ pressed }) => [styles.iconBtn, pressed && { opacity: 0.6 }]}
@@ -223,7 +326,7 @@ export default function AddExpenseScreen() {
           <Ionicons name="arrow-back" size={22} color={colors.text} />
         </Pressable>
 
-        <ThemedText style={styles.topBarTitle}>Add Transaction</ThemedText>
+        <ThemedText style={styles.topBarTitle}>{isEditing ? 'Edit Transaction' : 'Add Transaction'}</ThemedText>
 
         <Pressable
           style={({ pressed }) => [styles.iconBtn, pressed && { opacity: 0.6 }]}
@@ -232,7 +335,7 @@ export default function AddExpenseScreen() {
         >
           <Ionicons name="ellipsis-vertical" size={20} color={colors.text} />
         </Pressable>
-      </View> */}
+      </View>
 
       {/* ── Amount Card (tappable → re-opens keypad) ── */}
       <Pressable
@@ -248,10 +351,23 @@ export default function AddExpenseScreen() {
         {/* Date row */}
         <View style={styles.amountCardTop}>
           <View style={styles.dateRow}>
-            <Ionicons name="calendar-outline" size={13} color="rgba(255,255,255,0.8)" />
-            <Text style={styles.dateText}>{formatDate(date)}</Text>
+            <Pressable onPress={openDatePicker} accessibilityRole="button" accessibilityLabel="Edit date">
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="calendar-outline" size={13} color="rgba(255,255,255,0.8)" />
+                <Text style={styles.dateText}>{formatDateOnly(date)}</Text>
+              </View>
+            </Pressable>
+
+            <Pressable onPress={openTimePicker} accessibilityRole="button" accessibilityLabel="Edit time" style={{ marginLeft: 12 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="time-outline" size={13} color="rgba(255,255,255,0.8)" />
+                <Text style={[styles.dateText, { marginLeft: 6 }]}>{formatTimeOnly(date)}</Text>
+              </View>
+            </Pressable>
           </View>
-          <Ionicons name="refresh-outline" size={16} color="rgba(255,255,255,0.7)" />
+          <Pressable onPress={() => setDate(new Date())} accessibilityRole="button" accessibilityLabel="Reset date">
+            <Ionicons name="refresh-outline" size={16} color="rgba(255,255,255,0.7)" />
+          </Pressable>
         </View>
 
         {/* Expense / Income type pills */}
@@ -310,27 +426,49 @@ export default function AddExpenseScreen() {
             { borderBottomColor: isDark ? colors.background : '#F0F1F7' },
             activePanel === 'category' && [
               styles.formRowActive,
-              { borderLeftColor: selectedCategory?.color },
+              { borderLeftColor: selectedCategory?.color || '#9CA3AF' },
             ],
+            !selectedCategory && { opacity: 0.6 },
             pressed && { opacity: 0.75 },
           ]}
           onPress={handleCategoryRowPress}
           accessibilityRole="button"
           accessibilityLabel="Select category"
         >
-          <View style={[styles.rowIconWrap, { backgroundColor: categoryBg }]}>
-            <Ionicons name={selectedCategory?.icon} size={20} color={selectedCategory?.color} />
+          <View
+            style={[
+              styles.rowIconWrap,
+              {
+                backgroundColor: categoryBg || (isDark ? colors.background : '#F3F4F8'),
+              },
+            ]}
+          >
+            <Ionicons
+              name={selectedCategory?.icon || 'pricetag-outline'}
+              size={20}
+              color={selectedCategory?.color || colors.textSecondary}
+            />
           </View>
           <View style={styles.rowContent}>
             <Text style={[styles.rowLabel, { color: colors.textSecondary }]}>Category</Text>
-            <Text style={[styles.rowValue, { color: colors.text }]}>
-              {selectedCategory?.label}
+            <Text
+              style={[
+                styles.rowValue,
+                {
+                  color: selectedCategory ? colors.text : colors.textSecondary,
+                  fontWeight: selectedCategory ? '600' : '500',
+                },
+              ]}
+            >
+              {selectedCategory?.label || 'Select Category'}
             </Text>
           </View>
           <Ionicons
             name={activePanel === 'category' ? 'chevron-up' : 'chevron-down'}
             size={18}
-            color={activePanel === 'category' ? selectedCategory?.color : colors.textSecondary}
+            color={
+              activePanel === 'category' ? selectedCategory?.color || '#9CA3AF' : colors.textSecondary
+            }
           />
         </Pressable>
 
@@ -340,6 +478,7 @@ export default function AddExpenseScreen() {
             styles.formRow,
             { borderBottomColor: isDark ? colors.background : '#F0F1F7' },
             activePanel === 'payment' && [styles.formRowActive, { borderLeftColor: '#3369F6' }],
+            !selectedPayment && { opacity: 0.6 },
             pressed && { opacity: 0.75 },
           ]}
           onPress={handlePaymentRowPress}
@@ -352,13 +491,27 @@ export default function AddExpenseScreen() {
               { backgroundColor: isDark ? colors.background : '#E8F0FE' },
             ]}
           >
-            <Ionicons name={selectedPayment?.icon} size={20} color="#3369F6" />
+            <Ionicons
+              name={selectedPayment?.icon || 'wallet-outline'}
+              size={20}
+              color={selectedPayment ? '#3369F6' : colors.textSecondary}
+            />
           </View>
           <View style={styles.rowContent}>
             <Text style={[styles.rowLabel, { color: colors.textSecondary }]}>
               Payment Method
             </Text>
-            <Text style={[styles.rowValue, { color: colors.text }]}>{selectedPayment?.label}</Text>
+            <Text
+              style={[
+                styles.rowValue,
+                {
+                  color: selectedPayment ? colors.text : colors.textSecondary,
+                  fontWeight: selectedPayment ? '600' : '500',
+                },
+              ]}
+            >
+              {selectedPayment?.label || 'Select Payment Method'}
+            </Text>
           </View>
           <Ionicons
             name={activePanel === 'payment' ? 'chevron-up' : 'chevron-down'}
@@ -412,30 +565,47 @@ export default function AddExpenseScreen() {
         </View>
       )} */}
 
-      {activePanel === null && (
-        <View style={styles.saveArea}>
-          <Pressable
-            style={({ pressed }) => [
-              styles.saveButton,
-              { backgroundColor: headerBg },
-              pressed && styles.saveButtonPressed,
-              addTransaction.isPending && { opacity: 0.7 },
-            ]}
-            onPress={handleSave}
-            disabled={addTransaction.isPending}
-            accessibilityRole="button"
-            accessibilityLabel="Save transaction"
-          >
-            {addTransaction.isPending ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Ionicons name="checkmark-circle-outline" size={20} color="#fff" />
-            )}
-            <Text style={styles.saveButtonText}>
-              {addTransaction.isPending ? 'Saving...' : 'Save Transaction'}
-            </Text>
-          </Pressable>
-        </View>
+
+      <View style={styles.saveArea}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.saveButton,
+            { backgroundColor: headerBg },
+            pressed && styles.saveButtonPressed,
+            (addTransaction.isPending || updateTransaction.isPending) && { opacity: 0.7 },
+          ]}
+          onPress={handleSave}
+          disabled={addTransaction.isPending || updateTransaction.isPending}
+          accessibilityRole="button"
+          accessibilityLabel="Save transaction"
+        >
+          {addTransaction.isPending || updateTransaction.isPending ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Ionicons name="checkmark-circle-outline" size={20} color="#fff" />
+          )}
+          <Text style={styles.saveButtonText}>
+            {addTransaction.isPending || updateTransaction.isPending
+              ? isEditing
+                ? 'Updating...'
+                : 'Saving...'
+              : isEditing
+                ? 'Update Transaction'
+                : 'Save Transaction'}
+          </Text>
+        </Pressable>
+      </View>
+
+
+      {showPicker && (
+        <DateTimePicker
+          value={date}
+          onValueChange={(event, selectedDate) => onPickerValueChange(event, selectedDate)}
+          mode={pickerMode}
+          display='compact'
+          is24Hour={false}
+          onDismiss={() => { setShowPicker(false) }}
+        />
       )}
 
       {/* ── Bottom Panel Area ── */}
@@ -542,7 +712,7 @@ const styles = StyleSheet.create({
   },
   dateText: {
     color: 'rgba(255,255,255,0.8)',
-    fontSize: 12,
+    fontSize: 16,
     fontWeight: '500',
   },
   typePills: {
@@ -705,5 +875,16 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 17,
     fontWeight: '700',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

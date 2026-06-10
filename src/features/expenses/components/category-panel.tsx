@@ -1,5 +1,7 @@
+import { Colors, Spacing } from '@/constants/theme';
+import { CATEGORIES, Category } from '@/features/expenses/types';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useCallback } from 'react';
+import { useCallback } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -8,8 +10,6 @@ import {
   useColorScheme,
   View,
 } from 'react-native';
-import { Colors, Spacing } from '@/constants/theme';
-import { CATEGORIES, Category } from '@/features/expenses/types';
 
 interface CategoryPanelProps {
   selectedId: string;
@@ -115,6 +115,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     paddingTop: 10,
     paddingBottom: Spacing.three,
+    position:'absolute',
   },
   handle: {
     width: 36,

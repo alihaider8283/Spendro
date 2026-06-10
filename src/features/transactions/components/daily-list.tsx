@@ -1,13 +1,12 @@
-import React from 'react';
-import { StyleSheet, View, Pressable, ScrollView, useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { Pressable, ScrollView, StyleSheet, useColorScheme, View } from 'react-native';
 
-import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
 import { ThemedText } from '@/components/themed-text';
-import { ListItem } from '../types';
+import { Spacing } from '@/constants/theme';
 import { getCategoryByNameOrId, getCurrencySymbol } from '@/features/expenses/types';
+import { useTheme } from '@/hooks/use-theme';
+import { ListItem } from '../types';
 
 interface DailyListProps {
   groupedDailyItems: { [key: string]: ListItem[] };
@@ -41,7 +40,6 @@ export function DailyList({ groupedDailyItems, monthLabel }: DailyListProps) {
                 const cat = getCategoryByNameOrId(trans.category);
                 const symbol = getCurrencySymbol(trans.currency);
                 const amountStr = `${sign}${symbol}${trans.amount.toFixed(2)}`;
-
                 return (
                   <Pressable
                     key={trans.id}

@@ -120,7 +120,7 @@ export function AmountKeypad({
             accessibilityRole="button"
             accessibilityLabel="Open currency options"
           >
-            <Ionicons name="globe-outline" size={20} color={colors.text} />
+            <Ionicons name="close" size={20} color={colors.text} />
           </Pressable>
         </View>
       </View>
