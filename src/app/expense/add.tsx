@@ -171,12 +171,14 @@ export default function AddExpenseScreen() {
     });
   }, [amount]);
 
+  /* AI suggestion logic disabled for current phase
   const aiSuggestion = useMemo(() => {
     const num = parseFloat(amount) || 0;
     if (num > 1000) return 'Based on your history, this seems like a monthly recurring expense.';
     if (num > 500) return 'Your spending in this category is trending higher this month.';
     return 'Based on your history, this might be a regular daily expense.';
   }, [amount]);
+  */
 
   const isExpense = type === 'expense';
   const headerBg = isExpense ? '#3369F6' : '#137333';
@@ -277,6 +279,7 @@ export default function AddExpenseScreen() {
       currency,
       merchant: null,
     };
+
 
     try {
       if (isEditing && id) {

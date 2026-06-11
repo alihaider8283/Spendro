@@ -1,6 +1,6 @@
-import { getDb, recalculateMonthlyStats, getMonthStrFromTimestamp } from './dbService';
-import { triggerSync } from './syncEngine';
 import { useSettingsStore } from '../store/settingsStore';
+import { getDb, getMonthStrFromTimestamp, recalculateMonthlyStats } from './dbService';
+import { triggerSync } from './syncEngine';
 
 export interface Transaction {
   id: string;
@@ -39,11 +39,12 @@ export const transactionRepository = {
     const rows = await db.getAllAsync<Transaction>(
       `SELECT * FROM transactions WHERE syncStatus != 'deleted' ORDER BY transactionDate DESC`
     );
+   
     const globalCurrency = useSettingsStore.getState().currency || 'USD';
     return rows.map((r) => ({
       ...r,
       title: r.description || r.category,
-      currency: globalCurrency,
+      currency: (r as any).currency || globalCurrency,
     }));
   },
 
@@ -57,7 +58,7 @@ export const transactionRepository = {
     return rows.map((r) => ({
       ...r,
       title: r.description || r.category,
-      currency: globalCurrency,
+      currency: (r as any).currency || globalCurrency,
     }));
   },
 
@@ -75,7 +76,7 @@ export const transactionRepository = {
     return {
       ...row,
       title: row.description || row.category,
-      currency: globalCurrency,
+      currency: (row as any).currency || globalCurrency,
     };
   },
 
@@ -85,32 +86,63 @@ export const transactionRepository = {
   create: async (tx: Omit<Transaction, 'id' | 'syncStatus' | 'createdAt' | 'updatedAt'>): Promise<Transaction> => {
     const db = getDb();
     const now = Date.now();
+    const globalCurrency = useSettingsStore.getState().currency || 'USD';
     const newTx: Transaction = {
       ...tx,
       id: generateId('tx'),
+      currency: tx.currency || globalCurrency,
       syncStatus: 'pending',
       createdAt: now,
       updatedAt: now,
     };
 
-    await db.runAsync(
-      `INSERT INTO transactions (id, type, amount, category, description, method, transactionDate, source, receiptUrl, syncStatus, createdAt, updatedAt)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        newTx.id,
-        newTx.type,
-        newTx.amount,
-        newTx.category,
-        newTx.description,
-        newTx.method,
-        newTx.transactionDate,
-        newTx.source,
-        newTx.receiptUrl,
-        newTx.syncStatus,
-        newTx.createdAt,
-        newTx.updatedAt,
-      ]
-    );
+
+    try {
+      await db.runAsync(
+        `INSERT INTO transactions (id, type, amount, category, description, method, transactionDate, source, receiptUrl, currency, syncStatus, createdAt, updatedAt)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          newTx.id,
+          newTx.type,
+          newTx.amount,
+          newTx.category ?? null,
+          newTx.description ?? null,
+          newTx.method ?? null,
+          newTx.transactionDate,
+          newTx.source,
+          newTx.receiptUrl ?? null,
+          newTx.currency ?? null,
+          newTx.syncStatus,
+          newTx.createdAt,
+          newTx.updatedAt,
+        ]
+      );
+    } catch (err: any) {
+      // If the column doesn't exist (older DB), retry without currency column
+      const msg = String(err?.message || err);
+      if (msg.includes('no column named currency') || msg.includes('has no column named currency')) {
+        await db.runAsync(
+          `INSERT INTO transactions (id, type, amount, category, description, method, transactionDate, source, receiptUrl, syncStatus, createdAt, updatedAt)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+              newTx.id,
+              newTx.type,
+              newTx.amount,
+              newTx.category ?? null,
+              newTx.description ?? null,
+              newTx.method ?? null,
+              newTx.transactionDate,
+              newTx.source,
+              newTx.receiptUrl ?? null,
+              newTx.syncStatus,
+              newTx.createdAt,
+              newTx.updatedAt,
+            ]
+        );
+      } else {
+        throw err;
+      }
+    }
 
     // Recalculate stats for the month of this transaction
     const month = getMonthStrFromTimestamp(newTx.transactionDate);
@@ -137,28 +169,56 @@ export const transactionRepository = {
     const updatedTx: Transaction = {
       ...existing,
       ...updates,
+      currency: (updates as any).currency ?? existing.currency,
       syncStatus: 'pending',
       updatedAt: now,
     };
 
-    await db.runAsync(
-      `UPDATE transactions 
-       SET type = ?, amount = ?, category = ?, description = ?, method = ?, transactionDate = ?, source = ?, receiptUrl = ?, syncStatus = ?, updatedAt = ?
-       WHERE id = ?`,
-      [
-        updatedTx.type,
-        updatedTx.amount,
-        updatedTx.category,
-        updatedTx.description,
-        updatedTx.method,
-        updatedTx.transactionDate,
-        updatedTx.source,
-        updatedTx.receiptUrl,
-        updatedTx.syncStatus,
-        updatedTx.updatedAt,
-        id,
-      ]
-    );
+    try {
+      await db.runAsync(
+        `UPDATE transactions 
+         SET type = ?, amount = ?, category = ?, description = ?, method = ?, transactionDate = ?, source = ?, receiptUrl = ?, currency = ?, syncStatus = ?, updatedAt = ?
+         WHERE id = ?`,
+        [
+          updatedTx.type,
+          updatedTx.amount,
+          updatedTx.category ?? null,
+          updatedTx.description ?? null,
+          updatedTx.method ?? null,
+          updatedTx.transactionDate,
+          updatedTx.source,
+          updatedTx.receiptUrl ?? null,
+          updatedTx.currency ?? null,
+          updatedTx.syncStatus,
+          updatedTx.updatedAt,
+          id,
+        ]
+      );
+    } catch (err: any) {
+      const msg = String(err?.message || err);
+      if (msg.includes('no column named currency') || msg.includes('has no column named currency')) {
+        await db.runAsync(
+          `UPDATE transactions 
+           SET type = ?, amount = ?, category = ?, description = ?, method = ?, transactionDate = ?, source = ?, receiptUrl = ?, syncStatus = ?, updatedAt = ?
+           WHERE id = ?`,
+          [
+            updatedTx.type,
+            updatedTx.amount,
+            updatedTx.category ?? null,
+            updatedTx.description ?? null,
+            updatedTx.method ?? null,
+            updatedTx.transactionDate,
+            updatedTx.source,
+            updatedTx.receiptUrl ?? null,
+            updatedTx.syncStatus,
+            updatedTx.updatedAt,
+            id,
+          ]
+        );
+      } else {
+        throw err;
+      }
+    }
 
     // Recalculate monthly stats (original month)
     await recalculateMonthlyStats(originalMonth);
@@ -207,37 +267,78 @@ export const transactionRepository = {
    */
   applySyncWrite: async (tx: Transaction): Promise<void> => {
     const db = getDb();
-    await db.runAsync(
-      `INSERT INTO transactions (id, type, amount, category, description, method, transactionDate, source, receiptUrl, syncStatus, createdAt, updatedAt)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(id) 
-       DO UPDATE SET 
-         type = excluded.type,
-         amount = excluded.amount,
-         category = excluded.category,
-         description = excluded.description,
-         method = excluded.method,
-         transactionDate = excluded.transactionDate,
-         source = excluded.source,
-         receiptUrl = excluded.receiptUrl,
-         syncStatus = excluded.syncStatus,
-         createdAt = excluded.createdAt,
-         updatedAt = excluded.updatedAt`,
-      [
-        tx.id,
-        tx.type,
-        tx.amount,
-        tx.category,
-        tx.description,
-        tx.method,
-        tx.transactionDate,
-        tx.source,
-        tx.receiptUrl,
-        tx.syncStatus,
-        tx.createdAt,
-        tx.updatedAt,
-      ]
-    );
+    try {
+      await db.runAsync(
+        `INSERT INTO transactions (id, type, amount, category, description, method, transactionDate, source, receiptUrl, currency, syncStatus, createdAt, updatedAt)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(id) 
+         DO UPDATE SET 
+           type = excluded.type,
+           amount = excluded.amount,
+           category = excluded.category,
+           description = excluded.description,
+           method = excluded.method,
+           transactionDate = excluded.transactionDate,
+           source = excluded.source,
+           receiptUrl = excluded.receiptUrl,
+           currency = excluded.currency,
+           syncStatus = excluded.syncStatus,
+           createdAt = excluded.createdAt,
+           updatedAt = excluded.updatedAt`,
+        [
+          tx.id,
+          tx.type,
+          tx.amount,
+          tx.category ?? null,
+          tx.description ?? null,
+          tx.method ?? null,
+          tx.transactionDate,
+          tx.source,
+          tx.receiptUrl ?? null,
+          tx.currency ?? useSettingsStore.getState().currency ?? 'USD',
+          tx.syncStatus,
+          tx.createdAt,
+          tx.updatedAt,
+        ]
+      );
+    } catch (err: any) {
+      const msg = String(err?.message || err);
+      if (msg.includes('no column named currency') || msg.includes('has no column named currency')) {
+        await db.runAsync(
+          `INSERT INTO transactions (id, type, amount, category, description, method, transactionDate, source, receiptUrl, syncStatus, createdAt, updatedAt)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT(id) 
+           DO UPDATE SET 
+             type = excluded.type,
+             amount = excluded.amount,
+             category = excluded.category,
+             description = excluded.description,
+             method = excluded.method,
+             transactionDate = excluded.transactionDate,
+             source = excluded.source,
+             receiptUrl = excluded.receiptUrl,
+             syncStatus = excluded.syncStatus,
+             createdAt = excluded.createdAt,
+             updatedAt = excluded.updatedAt`,
+          [
+            tx.id,
+            tx.type,
+            tx.amount,
+            tx.category ?? null,
+            tx.description ?? null,
+            tx.method ?? null,
+            tx.transactionDate,
+            tx.source,
+            tx.receiptUrl ?? null,
+            tx.syncStatus,
+            tx.createdAt,
+            tx.updatedAt,
+          ]
+        );
+      } else {
+        throw err;
+      }
+    }
 
     const month = getMonthStrFromTimestamp(tx.transactionDate);
     await recalculateMonthlyStats(month);

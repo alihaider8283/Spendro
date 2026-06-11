@@ -1,10 +1,10 @@
 import { Pressable, ScrollView, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { FAB } from '@/components/floating-action-button';
 import { Colors, Spacing } from '@/constants/theme';
 import { useAuthStore } from '@/store/authStore';
 import { useRouter } from 'expo-router';
-import { FAB } from '@/components/floating-action-button';
 
 const recentTransactions = [
   { id: '1', title: 'Starbucks', amount: '-$6.40', subtitle: 'Coffee' },
@@ -84,11 +84,13 @@ export default function HomeScreen() {
           </View>
         </View>
 
+        {/* AI Insights (disabled for current phase)
         <View style={[styles.sectionCard, { backgroundColor: colors.backgroundElement }]}> 
           <Text style={[styles.sectionTitle, { color: colors.text }]}>AI Insights</Text>
           <Text style={[styles.bodyText, { color: colors.textSecondary }]}>Dining out increased 24% this month. Predicted total: $3,180 by month end.</Text>
           <Text style={[styles.bodyText, { color: colors.textSecondary, marginTop: Spacing.two }]}>Cutting subscriptions could save you $48/mo.</Text>
         </View>
+        */}
 
         <View style={[styles.sectionCard, { backgroundColor: colors.backgroundElement }]}> 
           <View style={styles.transactionsHeader}>

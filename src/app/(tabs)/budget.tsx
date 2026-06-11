@@ -1,11 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useMemo } from 'react';
 import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  useColorScheme,
-  View,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    useColorScheme,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -181,6 +181,7 @@ export default function BudgetScreen() {
           </ThemedText>
         </Pressable>
 
+        {/* AI Budget Suggestions (disabled for current phase)
         <ThemedView style={[styles.suggestionsCard, { backgroundColor: colors.backgroundElement }]}>
           <View style={styles.suggestionsHeader}>
             <View style={styles.suggestionsTitleRow}>
@@ -205,6 +206,7 @@ export default function BudgetScreen() {
             </View>
           ))}
         </ThemedView>
+        */}
       </ScrollView>
     </SafeAreaView>
   );

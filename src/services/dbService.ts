@@ -1,4 +1,5 @@
 import * as SQLite from 'expo-sqlite';
+import { useSettingsStore } from '../store/settingsStore';
 
 let db: SQLite.SQLiteDatabase | null = null;
 
@@ -33,6 +34,7 @@ export const initDb = async (): Promise<void> => {
       transactionDate INTEGER NOT NULL,
       source TEXT NOT NULL CHECK(source IN ('manual', 'voice', 'receipt_scan')),
       receiptUrl TEXT,
+      currency TEXT,
       syncStatus TEXT NOT NULL CHECK(syncStatus IN ('pending', 'synced', 'deleted')),
       createdAt INTEGER NOT NULL,
       updatedAt INTEGER NOT NULL
@@ -54,6 +56,23 @@ export const initDb = async (): Promise<void> => {
       expense REAL NOT NULL DEFAULT 0.0
     );
   `);
+
+  // Migration: ensure existing DB has `currency` column
+  try {
+    const info = await database.getAllAsync<{ name: string }>(`PRAGMA table_info(transactions);`);
+    const hasCurrency = info.some((c) => c.name === 'currency');
+    if (!hasCurrency) {
+      const globalCurrency = useSettingsStore.getState().currency || 'USD';
+      const escaped = String(globalCurrency).replace(/'/g, "''");
+      await database.execAsync(`ALTER TABLE transactions ADD COLUMN currency TEXT DEFAULT '${escaped}'`);
+      // Backfill existing rows to ensure currency is set
+      await database.execAsync(`UPDATE transactions SET currency='${escaped}' WHERE currency IS NULL`);
+    }
+  } catch (err) {
+    // Non-fatal: log and continue
+    // eslint-disable-next-line no-console
+    console.warn('DB migration check for currency column failed:', err);
+  }
 };
 
 /**

@@ -1,11 +1,10 @@
+import { ThemedText } from '@/components/themed-text';
 import { Colors, Spacing } from '@/constants/theme';
+import { triggerSync } from '@/services/syncEngine';
 import { useAuthStore } from '@/store/authStore';
 import { useSettingsStore } from '@/store/settingsStore';
-import { triggerSync } from '@/services/syncEngine';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import { useRouter } from 'expo-router';
 import {
   Alert,
   Platform,
@@ -17,7 +16,6 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
 
 export default function SettingsScreen() {
   const scheme = useColorScheme();
@@ -159,36 +157,6 @@ export default function SettingsScreen() {
 
             <View style={[styles.divider, { backgroundColor: colors.background }]} />
 
-            {/* Payment Methods */}
-            <Pressable
-              style={({ pressed }) => [styles.listItem, pressed && { backgroundColor: colors.backgroundSelected }]}
-            >
-              <View style={styles.listItemLeft}>
-                <View style={[styles.itemIconContainer, { backgroundColor: colors.background }]}>
-                  <Ionicons name="card-outline" size={20} color={colors.textSecondary} />
-                </View>
-                <ThemedText style={styles.listItemText}>Payment Methods</ThemedText>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
-            </Pressable>
-
-            <View style={[styles.divider, { backgroundColor: colors.background }]} />
-
-            {/* Linked Accounts */}
-            <Pressable
-              style={({ pressed }) => [styles.listItem, pressed && { backgroundColor: colors.backgroundSelected }]}
-            >
-              <View style={styles.listItemLeft}>
-                <View style={[styles.itemIconContainer, { backgroundColor: colors.background }]}>
-                  <Ionicons name="wallet-outline" size={20} color={colors.textSecondary} />
-                </View>
-                <ThemedText style={styles.listItemText}>Linked Accounts</ThemedText>
-              </View>
-              <View style={styles.listItemRight}>
-                <ThemedText style={[styles.badgeText, { color: colors.textSecondary }]}>3</ThemedText>
-                <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
-              </View>
-            </Pressable>
           </View>
         </View>
 
@@ -198,7 +166,7 @@ export default function SettingsScreen() {
             PREFERENCES
           </ThemedText>
           <View style={[styles.listContainer, { backgroundColor: colors.backgroundElement }]}>
-            {/* AI Auto-Categorization */}
+            {/* AI Auto-Categorization (disabled for current phase)
             <View style={styles.listItemWithSub}>
               <View style={styles.listItemLeft}>
                 <View style={[styles.itemIconContainer, { backgroundColor: theme === 'dark' ? '#1A2F4C' : '#EBF3FF' }]}>
@@ -219,6 +187,7 @@ export default function SettingsScreen() {
                 ios_backgroundColor={colors.backgroundSelected}
               />
             </View>
+            */}
 
             <View style={[styles.divider, { backgroundColor: colors.background }]} />
 

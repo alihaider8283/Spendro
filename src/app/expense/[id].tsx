@@ -17,6 +17,7 @@ import { Colors, Spacing } from '@/constants/theme';
 import { getCategoryByNameOrId, getCurrencySymbol } from '@/features/expenses/types';
 import { Transaction } from '@/features/transactions/types';
 import { useTheme } from '@/hooks/use-theme';
+import { useDeleteTransaction } from '@/hooks/useTransactions';
 import { transactionRepository } from '@/services/transactionRepository';
 
 export default function TransactionDetailScreen() {
@@ -56,7 +57,7 @@ export default function TransactionDetailScreen() {
                 onPress: async () => {
                     try {
                         if (transaction?.id) {
-                            await transactionRepository.delete(transaction.id);
+                            await deleteMutation.mutateAsync(transaction.id);
                             router.back();
                         }
                     } catch (error) {
@@ -68,6 +69,8 @@ export default function TransactionDetailScreen() {
             },
         ]);
     };
+
+    const deleteMutation = useDeleteTransaction();
 
     const handleEditTransaction = () => {
         if (transaction?.id) {
@@ -198,10 +201,12 @@ export default function TransactionDetailScreen() {
                     <View style={styles.receiptSection}>
                         <View style={styles.receiptHeader}>
                             <ThemedText type="subtitle">Receipt</ThemedText>
+                            {/* AI Scanned badge disabled for current phase
                             <View style={styles.aiScannedBadge}>
                                 <Ionicons name="sparkles" size={12} color="#1E88E5" />
                                 <ThemedText style={styles.aiScannedText}>AI Scanned</ThemedText>
                             </View>
+                            */}
                         </View>
 
                         <Image

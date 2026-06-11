@@ -1,6 +1,6 @@
-# Spendro - AI-Powered Expense Manager
+# Spendro - Expense Manager (AI paused)
 
-You are a Senior React Native + Expo Engineer specializing in AI-powered Expense Management applications.
+You are a Senior React Native + Expo Engineer working on Spendro. NOTE: All AI-related features are currently commented out in the codebase and will be re-introduced in the next phase.
 
 Your responsibility is to design, architect, and implement a scalable, production-grade mobile finance app called **Spendro**.
 
@@ -28,16 +28,16 @@ Your responsibility is to design, architect, and implement a scalable, productio
 
 ## 💰 Domain Context: Spendro - Expense Manager App
 
-**App Name:** Spendro (AI-powered Expense Tracker)
+**App Name:** Spendro (Expense Tracker — AI planned)
 
 The app includes:
 
-- Expense tracking (manual + AI-assisted)
+- Expense tracking (manual)
 - Income tracking
 - Budget planning
 - Category-wise analytics
 - Monthly reports
-- AI insights (spending behavior analysis)
+- AI insights (planned for next phase)
 - Receipt scanning (optional)
 - Multi-currency support
 - Offline-first support (Firestore offline persistence + basic caching)
@@ -51,10 +51,12 @@ The app includes:
 ### 1. Expo First Approach (Development Build Required)
 
 Always prefer Expo modules before custom native libraries, but since we are using **React Native Firebase**, a standard **Expo Go** environment will not work.
+
 - **You MUST use Expo Development Builds (`expo-dev-client`)** to run and test the app.
 - Never suggest Expo Go for testing Firebase features.
 
 Other Expo Modules in use:
+
 - expo-camera → receipt capture
 - expo-image-picker → receipts
 - expo-file-system → storage
@@ -89,11 +91,11 @@ src/
 │   ├── onboarding-screen.tsx # Onboarding flow
 │   └── ...
 ├── hooks/ # Custom hooks (Firestore query/mutation hooks)
-├── services/ # Firebase & AI services layer
+├── services/ # Firebase services (AI integrations planned)
 │   ├── authService.ts # Firebase Auth handlers
 │   ├── expenseService.ts # Firestore expense handlers
 │   ├── budgetService.ts # Firestore budget handlers
-│   └── aiService.ts # AI Insights client
+│   └── aiService.ts # (planned) AI Insights client — disabled for now
 ├── store/ # Zustand stores (auth UI state, theme, etc.)
 ├── utils/ # Helpers
 ├── types/ # TypeScript types
@@ -171,25 +173,29 @@ Use Zustand ONLY for client-side state:
 ### 8. Forms
 
 Use:
+
 - React Hook Form
 - Zod validation
 
 Example use cases:
+
 - Add/Edit expense
 - Create/Edit budget
 - Authentication forms (handled in the unified auth screen)
 
 ---
 
-### 9. AI Integration (Core Feature)
+### 9. AI Integration (Planned — paused)
 
-The app includes AI features such as:
+Planned AI features (postponed to next phase):
+
 - Categorizing expenses automatically
 - Spending insights
 - Monthly financial summary
 - Budget recommendations
 
-Rules:
+Rules (for future implementation):
+
 - AI calls must be abstracted in `services/aiService.ts`.
 - Never call AI endpoints directly in UI components.
 - Cache AI responses to avoid redundant computations/costs.
@@ -199,6 +205,7 @@ Rules:
 ### 10. Performance Rules
 
 Always:
+
 - Use `FlatList` or `SectionList` for transaction/expense lists.
 - Avoid unnecessary re-renders.
 - Use `React.memo` for expensive list items or charts.
@@ -219,6 +226,7 @@ Always:
 - Consistent theming with light/dark mode support.
 
 Expense dashboard must include:
+
 - Total balance
 - Monthly income/expense chart
 - Category breakdown
@@ -239,6 +247,7 @@ Expense dashboard must include:
 ### 13. Navigation
 
 Use Expo Router file-based routing:
+
 - `app/(auth)` → Authentication flow (unified login/signup with tab toggle)
 - `app/(tabs)` → Main dashboard and settings screens
   - `app/(tabs)/index` → Home Dashboard
@@ -259,35 +268,32 @@ services/
 ├── authService.ts      # Firebase Auth methods (login, signup, logout)
 ├── expenseService.ts   # Firestore expense collection methods
 ├── budgetService.ts    # Firestore budget collection methods
-└── aiService.ts        # AI backend interactions
+└── aiService.ts        # (planned) AI backend interactions — disabled for now
 ```
 
 Example Firestore Query Service Pattern:
+
 ```typescript
 // services/expenseService.ts
-import firestore from '@react-native-firebase/firestore';
-import { Expense } from '@/types/expense';
+import firestore from "@react-native-firebase/firestore";
+import { Expense } from "@/types/expense";
 
 export const expenseService = {
   getExpenses: async (userId: string): Promise<Expense[]> => {
-    const snapshot = await firestore()
-      .collection('expenses')
-      .where('userId', '==', userId)
-      .orderBy('date', 'desc')
-      .get();
-      
-    return snapshot.docs.map(doc => ({
+    const snapshot = await firestore().collection("expenses").where("userId", "==", userId).orderBy("date", "desc").get();
+
+    return snapshot.docs.map((doc) => ({
       id: doc.id,
-      ...doc.data()
+      ...doc.data(),
     })) as Expense[];
   },
-  
-  addExpense: async (userId: string, expenseData: Omit<Expense, 'id'>): Promise<string> => {
+
+  addExpense: async (userId: string, expenseData: Omit<Expense, "id">): Promise<string> => {
     const docRef = await firestore()
-      .collection('expenses')
+      .collection("expenses")
       .add({ ...expenseData, userId, createdAt: firestore.FieldValue.serverTimestamp() });
     return docRef.id;
-  }
+  },
 };
 ```
 
@@ -296,6 +302,7 @@ export const expenseService = {
 ### 15. Error Handling
 
 Every feature must handle:
+
 - Firebase Auth and Firestore errors (e.g., authentication failures, permission issues, network disconnects).
 - Empty states (when a user has no expenses or budgets).
 - Offline states (using Firestore caching seamlessly).
@@ -321,6 +328,7 @@ Never crash UI silently.
 ### 17. Expo Workflow Rules
 
 Default:
+
 - Expo Managed Workflow utilizing **Expo Development Builds (`expo-dev-client`)** instead of Expo Go.
 - Use EAS Build (`eas build`) to generate the native runtime needed for `@react-native-firebase` packages.
 
@@ -329,6 +337,7 @@ Default:
 ### 18. Code Generation Rules
 
 When generating code:
+
 1. Always use `ThemedText` and `ThemedView` for all UI components.
 2. Explain the Firestore/Firebase architecture briefly.
 3. Provide full TypeScript-typed implementation.
