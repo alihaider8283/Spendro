@@ -1,7 +1,8 @@
 import { OnboardingScreen } from '@/components/onboarding-screen';
+import SetupFlow from '@/components/setup-flow';
 import { Colors } from '@/constants/theme';
 import { initDb } from '@/services/dbService';
-import { getOnboardingComplete, setOnboardingComplete } from '@/services/onboardingService';
+import { getFirstTimeSetupComplete, getOnboardingComplete, setFirstTimeSetupComplete, setOnboardingComplete } from '@/services/onboardingService';
 import { initializeSyncEngine } from '@/services/syncEngine';
 import { useAuthStore } from '@/store/authStore';
 import { useSettingsStore } from '@/store/settingsStore';
@@ -40,6 +41,7 @@ export default function RootLayout() {
   const { isAuthenticated, initializeAuth } = useAuthStore();
   const { loadSettings } = useSettingsStore();
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<boolean | null>(null);
+  const [hasCompletedFirstTimeSetup, setHasCompletedFirstTimeSetup] = useState<boolean | null>(null);
 
   // Initialize SQLite database and sync engine
   useEffect(() => {
@@ -95,6 +97,31 @@ export default function RootLayout() {
     };
   }, []);
 
+  // Load first-time setup status after onboarding
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadFirstTimeSetup() {
+      try {
+        if (!hasCompletedOnboarding) return;
+        const isComplete = await getFirstTimeSetupComplete();
+        if (isMounted) {
+          setHasCompletedFirstTimeSetup(isComplete);
+        }
+      } catch {
+        if (isMounted) {
+          setHasCompletedFirstTimeSetup(false);
+        }
+      }
+    }
+
+    void loadFirstTimeSetup();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [hasCompletedOnboarding]);
+
   const handleOnboardingDone = useCallback(async () => {
     await setOnboardingComplete();
     setHasCompletedOnboarding(true);
@@ -119,6 +146,31 @@ export default function RootLayout() {
       </QueryClientProvider>
     );
   }
+
+    if (hasCompletedFirstTimeSetup === null) {
+      return (
+        <SafeAreaView
+          style={[styles.loadingScreen, { backgroundColor: colors.background }]}
+          edges={['bottom', 'left', 'right', 'top']}>
+          <ActivityIndicator color={primaryColor} size="large" />
+        </SafeAreaView>
+      );
+    }
+
+    if (!hasCompletedFirstTimeSetup) {
+      return (
+        <QueryClientProvider client={queryClient}>
+          <ThemeProvider value={scheme === 'dark' ? DarkTheme : DefaultTheme}>
+            <SetupFlow
+              onDone={async () => {
+                await setFirstTimeSetupComplete();
+                setHasCompletedFirstTimeSetup(true);
+              }}
+            />
+          </ThemeProvider>
+        </QueryClientProvider>
+      );
+    }
 
   return (
     <QueryClientProvider client={queryClient}>

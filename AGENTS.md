@@ -317,10 +317,13 @@ Never crash UI silently.
 - **Splash Screen:** App launches with a splash screen, checking onboarding status and initializing authentication state.
 - **Onboarding:** 3-slide carousel (Receipt Scanning, Analytics, AI Insights) with Skip button. Remember onboarding completion in Async Storage.
 - **Optional Login Flow:** Login is optional. After onboarding, the user is redirected to the Home/Dashboard (`/(tabs)`).
-  - If the user is unauthenticated, they can browse the app as a Guest in Local Mode.
-  - The UI (Home Screen, Settings Screen) must reflect the Guest state (e.g., "Guest User", "Log in to sync your data").
-  - The Settings screen provides options to Log In or Sign Up, which routes to `/(auth)/auth`.
-  - Once logged in, the user is redirected back to the tabs.
+- **First-time Setup (new):** Immediately after onboarding completes, the app now shows a short first-time setup flow where the user picks a default `currency` and optionally sets an initial monthly `budget`. This step is optional and can be changed later in Settings. The UI is implemented in `src/components/setup-flow.tsx`.
+- **First-time Setup (new):** Immediately after onboarding completes, the app now shows a short first-time setup flow where the user picks a default `currency` and optionally sets an initial monthly `budget`. This step is optional and can be changed later in Settings. The UI is implemented in `src/components/setup-flow.tsx`.
+- **Budget Setup Screen:** A richer budget allocation screen is available for assigning a total monthly budget and allocating by category. Preview at the route `/budget-setup`. Implementation: `src/components/budget-setup.tsx` and route file `src/app/budget-setup.tsx`.
+- If the user is unauthenticated, they can browse the app as a Guest in Local Mode.
+- The UI (Home Screen, Settings Screen) must reflect the Guest state (e.g., "Guest User", "Log in to sync your data").
+- The Settings screen provides options to Log In or Sign Up, which routes to `/(auth)/auth`.
+- Once logged in, the user is redirected back to the tabs.
 - All flows use `ThemedText` and `ThemedView` for consistency.
 
 ---

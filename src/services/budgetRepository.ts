@@ -1,6 +1,6 @@
 import { getDb } from './dbService';
-import { generateId } from './transactionRepository';
 import { triggerSync } from './syncEngine';
+import { generateId } from './transactionRepository';
 
 export interface Budget {
   id: string;

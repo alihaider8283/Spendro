@@ -1,12 +1,13 @@
 import {
-  getAuth,
-  signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  getAuth,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
   signOut,
   updateProfile,
-  onAuthStateChanged,
   type FirebaseAuthTypes,
 } from '@react-native-firebase/auth';
+import firestore from '@react-native-firebase/firestore';
 
 export const authService = {
   /**
@@ -28,6 +29,32 @@ export const authService = {
     
     // Update display name profile field in Firebase Auth
     await updateProfile(user, { displayName: name });
+
+    // Persist user profile + default settings to Firestore (only Firestore, no local sqlite)
+    try {
+      const userDocRef = firestore().collection('users').doc(user.uid);
+
+      const userData = {
+        uid: user.uid,
+        email: user.email ?? '',
+        name: name,
+        photoURL: user.photoURL ?? '',
+        // default configuration values
+        settings: {
+          currency: 'USD',
+          notifications: true,
+          themeMode: 'light',
+          cloudBackup: false,
+        },
+        createdAt: firestore.FieldValue.serverTimestamp(),
+      } as const;
+
+      await userDocRef.set(userData);
+    } catch (err) {
+      // If Firestore write fails, log the error but don't block auth flow
+      console.error('Failed to create user document in Firestore:', err);
+    }
+
     return user;
   },
 
