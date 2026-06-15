@@ -1,13 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useMemo } from 'react';
 import {
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    useColorScheme,
-    View,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  useColorScheme,
+  View,
+  TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -23,12 +25,13 @@ function formatMonthKey(timestamp: number) {
 }
 
 function formatCurrency(amount: number, symbol: string) {
-  return `${symbol}${amount.toFixed(2)}`;
+  return `${symbol} ${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export default function BudgetScreen() {
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
+  const router = useRouter();
   const currency = useSettingsStore((state) => state.currency) || 'USD';
   const symbol = getCurrencySymbol(currency);
 
@@ -81,7 +84,7 @@ export default function BudgetScreen() {
           id: budget.id,
           label: category.label,
           icon: category.icon,
-          iconBg: category.bgLight,
+          iconBg: scheme === 'dark' ? category.bgDark : category.bgLight,
           iconColor: category.color,
           amount: budget.amount,
           spent: spentByCategory,
@@ -89,24 +92,34 @@ export default function BudgetScreen() {
           overBudget: spentByCategory > budget.amount,
         };
       }),
-    [monthlyBudgets, monthExpenses]
+    [monthlyBudgets, monthExpenses, scheme]
   );
 
+  const pageBgColor = scheme === 'dark' ? '#121212' : '#F8F9FA';
+  const cardBgColor = scheme === 'dark' ? '#1E1E1E' : '#FFFFFF';
+  const borderCardColor = scheme === 'dark' ? '#2D2D2D' : '#E2E8F0';
+
   return (
-    <SafeAreaView style={[styles.screen, { backgroundColor: colors.background }]}> 
+    <SafeAreaView style={[styles.screen, { backgroundColor: pageBgColor }]}> 
       <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
         <View style={styles.topRow}>
-          <ThemedText type="subtitle" style={styles.pageTitle}>
+          <ThemedText type="subtitle" style={[styles.pageTitle, { color: colors.text }]}>
             Budget
           </ThemedText>
-          <Pressable style={styles.editLink}>
-            <ThemedText type="smallBold" style={styles.editText}>
+          <TouchableOpacity style={styles.editLink} onPress={() => router.push('/budget-setup')} activeOpacity={0.7}>
+            <ThemedText style={styles.editText}>
               Edit
             </ThemedText>
-          </Pressable>
+          </TouchableOpacity>
         </View>
 
-        <ThemedView style={styles.budgetCard}>
+        <ThemedView style={[styles.budgetCard, { backgroundColor: '#0B66E4' }]}>
+          {/* Decorative background shapes */}
+          <View style={styles.cardDecorativeContainer}>
+            <View style={styles.cardDecorativeShape1} />
+            <View style={styles.cardDecorativeShape2} />
+          </View>
+
           <View>
             <ThemedText type="smallBold" style={styles.cardLabel}>
               Monthly Budget
@@ -137,15 +150,15 @@ export default function BudgetScreen() {
         <ThemedText type="smallBold" style={[styles.sectionTitle, { color: colors.text }]}>Category Budgets</ThemedText>
 
         {budgetRows.length === 0 ? (
-          <ThemedView style={[styles.emptyBudgetCard, { backgroundColor: colors.backgroundElement }]}>
+          <ThemedView style={[styles.emptyBudgetCard, { backgroundColor: cardBgColor, borderColor: borderCardColor, borderWidth: 1 }]}>
             <ThemedText themeColor="textSecondary">No budgets set for this month yet.</ThemedText>
           </ThemedView>
         ) : (
           budgetRows.map((row) => (
-            <ThemedView key={row.id} style={[styles.categoryRow, { backgroundColor: colors.backgroundElement }]}>
+            <ThemedView key={row.id} style={[styles.categoryRow, { backgroundColor: cardBgColor, borderColor: borderCardColor, borderWidth: 1 }]}>
               <View style={styles.rowTop}>
                 <View style={[styles.categoryIcon, { backgroundColor: row.iconBg }]}> 
-                  <Ionicons name={row.icon} size={18} color={row.iconColor} />
+                  <Ionicons name={row.icon} size={18} color={row.iconColor} style={{ textAlign: 'center' }} />
                 </View>
                 <View style={styles.categoryText}> 
                   <ThemedText style={styles.categoryLabel}>{row.label}</ThemedText>
@@ -174,39 +187,16 @@ export default function BudgetScreen() {
           ))
         )}
 
-        <Pressable style={styles.primaryButton}>
+        <TouchableOpacity
+          style={[styles.primaryButton, { backgroundColor: '#0B66E4' }]}
+          onPress={() => router.push('/budget-setup')}
+          activeOpacity={0.8}
+        >
           <Ionicons name="add" size={18} color="white" />
-          <ThemedText type="smallBold" style={styles.primaryButtonText}>
+          <ThemedText style={styles.primaryButtonText}>
             Add Category Budget
           </ThemedText>
-        </Pressable>
-
-        {/* AI Budget Suggestions (disabled for current phase)
-        <ThemedView style={[styles.suggestionsCard, { backgroundColor: colors.backgroundElement }]}>
-          <View style={styles.suggestionsHeader}>
-            <View style={styles.suggestionsTitleRow}>
-              <Ionicons name="sparkles" size={18} color="#1E88E5" />
-              <ThemedText type="smallBold" style={styles.suggestionsTitle}>
-                AI Budget Suggestions
-              </ThemedText>
-            </View>
-          </View>
-
-          {[
-            { text: 'Reduce dining by $200' },
-            { text: 'Increase savings by $150' },
-          ].map((item) => (
-            <View key={item.text} style={styles.suggestionRow}>
-              <ThemedText>{item.text}</ThemedText>
-              <Pressable style={styles.applyButton}>
-                <ThemedText type="smallBold" style={styles.applyButtonText}>
-                  Apply
-                </ThemedText>
-              </Pressable>
-            </View>
-          ))}
-        </ThemedView>
-        */}
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -227,33 +217,39 @@ const styles = StyleSheet.create({
   },
   pageTitle: {
     fontSize: 32,
-    fontWeight: '800',
+    fontWeight: '850',
   },
   editLink: {
     paddingVertical: Spacing.one,
     paddingHorizontal: Spacing.three,
   },
   editText: {
-    color: '#1E88E5',
+    color: '#0B66E4',
     fontSize: 14,
+    fontWeight: '700',
   },
   budgetCard: {
-    borderRadius: 24,
+    borderRadius: 16,
     padding: Spacing.four,
-    backgroundColor: '#1E88E5',
+    backgroundColor: '#0B66E4',
+    position: 'relative',
+    overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.08,
-    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
     elevation: 6,
   },
   cardLabel: {
     color: '#E5EEFF',
-    fontSize: 14,
+    fontSize: 12,
+    letterSpacing: 0.5,
   },
   cardAmount: {
     color: 'white',
     marginTop: Spacing.two,
+    fontSize: 36,
+    fontWeight: '800',
   },
   progressTrack: {
     height: 8,
@@ -275,10 +271,11 @@ const styles = StyleSheet.create({
   },
   statPill: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.18)',
     borderRadius: 999,
     paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.three,
+    alignItems: 'center',
   },
   statPillText: {
     color: 'white',
@@ -286,27 +283,37 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '750',
+    marginTop: 8,
   },
   emptyBudgetCard: {
-    borderRadius: 18,
+    borderRadius: 16,
     padding: Spacing.four,
+    borderWidth: 1,
+    alignItems: 'center',
   },
   categoryRow: {
-    borderRadius: 18,
+    borderRadius: 16,
     padding: Spacing.four,
+    borderWidth: 1,
+    marginBottom: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   rowTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: Spacing.three,
-    marginBottom: Spacing.two,
+    marginBottom: Spacing.three,
   },
   categoryIcon: {
     width: 44,
     height: 44,
-    borderRadius: 16,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -331,6 +338,7 @@ const styles = StyleSheet.create({
   overBudgetText: {
     color: '#B91C1C',
     fontSize: 12,
+    fontWeight: '600',
   },
   progressTrackSmall: {
     height: 8,
@@ -347,46 +355,51 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: Spacing.two,
-    paddingVertical: Spacing.four,
-    borderRadius: 18,
-    backgroundColor: '#1E88E5',
+    height: 54,
+    borderRadius: 12,
+    backgroundColor: '#0B66E4',
+    shadowColor: '#0B66E4',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+    marginTop: Spacing.four,
+    marginBottom: Spacing.four,
   },
   primaryButtonText: {
     color: 'white',
-    fontSize: 15,
-  },
-  suggestionsCard: {
-    borderRadius: 24,
-    padding: Spacing.four,
-  },
-  suggestionsHeader: {
-    marginBottom: Spacing.four,
-  },
-  suggestionsTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  suggestionsTitle: {
     fontSize: 16,
     fontWeight: '700',
   },
-  suggestionRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: Spacing.three,
-    borderRadius: 16,
-    marginBottom: Spacing.three,
+  // Card decorative shapes
+  cardDecorativeContainer: {
+    position: 'absolute',
+    right: -25,
+    top: -25,
+    width: 140,
+    height: 140,
+    opacity: 0.12,
   },
-  applyButton: {
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.four,
+  cardDecorativeShape1: {
+    position: 'absolute',
+    right: 15,
+    top: 25,
+    width: 90,
+    height: 110,
     borderRadius: 12,
-    backgroundColor: '#E8F2FF',
+    borderWidth: 5,
+    borderColor: '#ffffff',
+    transform: [{ rotate: '15deg' }],
   },
-  applyButtonText: {
-    color: '#1E88E5',
-    fontSize: 14,
+  cardDecorativeShape2: {
+    position: 'absolute',
+    right: -10,
+    top: 35,
+    width: 90,
+    height: 110,
+    borderRadius: 12,
+    borderWidth: 5,
+    borderColor: '#ffffff',
+    transform: [{ rotate: '30deg' }],
   },
 });

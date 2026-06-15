@@ -1,48 +1,69 @@
 import { Colors } from '@/constants/theme';
-import { CATEGORIES } from '@/features/expenses/types';
 import { useTheme } from '@/hooks/use-theme';
-import { budgetRepository } from '@/services/budgetRepository';
-import { Host, Slider } from '@expo/ui';
+import { useBudgets } from '@/hooks/useBudgets';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
-import { Button } from './button';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  useColorScheme,
+  View,
+  Platform,
+} from 'react-native';
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
-
-// Available colors for custom categories
+import Slider from '@react-native-community/slider';
+import { getCurrencySymbol, getCategoryByNameOrId } from '@/features/expenses/types';
+import { useSettingsStore } from '@/store/settingsStore';
+import { budgetRepository } from '@/services/budgetRepository';
+// Available colors for custom categories matching image 2
 const CUSTOM_COLORS = [
-  { color: '#EF4444', bgLight: '#FEE2E2', bgDark: '#7F1D1D' }, // Red
-  { color: '#F97316', bgLight: '#FFEDD5', bgDark: '#7C2D12' }, // Orange
-  { color: '#EAB308', bgLight: '#FEF08A', bgDark: '#713F12' }, // Yellow
-  { color: '#22C55E', bgLight: '#DCFCE7', bgDark: '#166534' }, // Green
-  { color: '#14B8A6', bgLight: '#CCFBF1', bgDark: '#134E4A' }, // Teal
-  { color: '#0EA5E9', bgLight: '#E0F2FE', bgDark: '#082F49' }, // Sky Blue
-  { color: '#6366F1', bgLight: '#E0E7FF', bgDark: '#312E81' }, // Indigo
-  { color: '#A855F7', bgLight: '#F3E8FF', bgDark: '#581C87' }, // Purple
-  { color: '#EC4899', bgLight: '#FCE7F3', bgDark: '#831843' }, // Pink
-  { color: '#8B5CF6', bgLight: '#F5F3FF', bgDark: '#4C1D95' }, // Violet
+  { color: '#0B66E4', bgLight: '#E6F0FF', bgDark: '#1E293B' }, // Dark Blue
+  { color: '#A14F0D', bgLight: '#FFEDD5', bgDark: '#451A03' }, // Brown/Rust
+  { color: '#475569', bgLight: '#F1F5F9', bgDark: '#1E293B' }, // Slate/Grey
+  { color: '#0EA5E9', bgLight: '#E0F2FE', bgDark: '#075985' }, // Sky Blue
+  { color: '#EA580C', bgLight: '#FFEDD5', bgDark: '#7C2D12' }, // Orange
+  { color: '#94A3B8', bgLight: '#F1F5F9', bgDark: '#334155' }, // Light Grey/Blue
 ];
 
-// Available icons for custom categories
 const CUSTOM_ICONS: (keyof typeof Ionicons.glyphMap)[] = [
+  // Health & Sports
+  'barbell-outline',
   'heart-outline',
-  'star-outline',
-  'bookmark-outline',
-  'flag-outline',
-  'home-outline',
-  'briefcase-outline',
-  'gift-outline',
-  'cube-outline',
-  'diamond-outline',
-  'leaf-outline',
+  'medkit-outline',
+  // Food & Dining
+  'restaurant-outline',
+  'cafe-outline',
   'pizza-outline',
-  'game-controller-outline',
-  'bulb-outline',
+  // Finance & Work
+  'card-outline',
+  'cash-outline',
+  'wallet-outline',
+  'briefcase-outline',
+  // Auto & Travel
+  'car-outline',
+  'airplane-outline',
   'bicycle-outline',
-  'watch-outline',
-  'flower-outline',
+  'gas-station-outline',
+  // Entertainment & Fun
+  'film-outline',
+  'game-controller-outline',
+  'musical-notes-outline',
+  'gift-outline',
+  // Shopping & Personal
+  'bag-outline',
+  'shirt-outline',
+  'school-outline',
+  // Utilities & Home
+  'home-outline',
+  'bulb-outline',
+  'water-outline',
+  'construct-outline',
 ];
 
 interface BudgetSetupProps {
@@ -57,32 +78,112 @@ interface CustomCategoryForm {
   bgDark: string;
 }
 
+interface BudgetAllocation {
+  id: string;
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  color: string;
+  bgLight: string;
+  bgDark: string;
+  percent: number;
+  avg: number;
+}
+
+// Initial 4 default categories — all start at 0%, user allocates manually
+const DEFAULT_BUDGET_CATEGORIES: BudgetAllocation[] = [
+  {
+    id: 'dining',
+    label: 'Food & Dining',
+    icon: 'restaurant-outline',
+    color: '#0B66E4',
+    bgLight: '#E6F0FF',
+    bgDark: '#1E293B',
+    percent: 0,
+    avg: 750,
+  },
+  {
+    id: 'transport',
+    label: 'Transport',
+    icon: 'car-outline',
+    color: '#10B981',
+    bgLight: '#E6F9F0',
+    bgDark: '#064E3B',
+    percent: 0,
+    avg: 400,
+  },
+  {
+    id: 'shopping',
+    label: 'Shopping',
+    icon: 'bag-outline',
+    color: '#EF4444',
+    bgLight: '#FEE2E2',
+    bgDark: '#7F1D1D',
+    percent: 0,
+    avg: 550,
+  },
+  {
+    id: 'housing',
+    label: 'Housing',
+    icon: 'home-outline',
+    color: '#F59E0B',
+    bgLight: '#FEF3C7',
+    bgDark: '#78350F',
+    percent: 0,
+    avg: 1200,
+  },
+];
+
 export default function BudgetSetup({ onDone }: BudgetSetupProps) {
   const theme = useTheme();
   const router = useRouter();
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
+  const currency = useSettingsStore((s) => s.currency);
+  const symbol = getCurrencySymbol(currency);
 
-  // Filter to only expense/income categories, exclude 'income' category, limit to main ones for initial setup
-  const budgetCategories = CATEGORIES.filter(c => c.id !== 'income').slice(0, 7);
-
-  const [totalBudget, setTotalBudget] = useState('3500');
+  const [totalBudget, setTotalBudget] = useState('');
   const totalNumber = Number(totalBudget) || 0;
 
-  const [allocations, setAllocations] = useState(() => {
-    // initial splits based on example percentages
-    return budgetCategories.map((c, i) => {
-      const percentages = [23, 13, 17, 34, 8, 3, 2];
-      const perc = percentages[i] ?? Math.floor(100 / budgetCategories.length);
-      return { ...c, percent: perc };
-    });
-  });
+  const { data: existingBudgets, isLoading } = useBudgets();
+  const [allocations, setAllocations] = useState<BudgetAllocation[]>([]);
+  const [deletedBudgetIds, setDeletedBudgetIds] = useState<string[]>([]);
+  
+  useEffect(() => {
+    if (!existingBudgets || isLoading) return;
+    
+    if (existingBudgets.length > 0) {
+      // Calculate total amount from existing budgets
+      const sum = existingBudgets.reduce((acc, b) => acc + b.amount, 0);
+      setTotalBudget((sum / 100).toString()); // amount is in cents locally? No, wait. In budgetRepository it's saved as `Math.round((a.amount || 0) * 100)`. So it's in cents in DB. Let me check budget-setup.tsx saving logic. Yes, `amount: Math.round((a.amount || 0) * 100)`.
+      
+      const loadedAllocations = existingBudgets.map(b => {
+        const catInfo = DEFAULT_BUDGET_CATEGORIES.find(c => c.id === b.category) || {
+          id: b.category,
+          label: b.category,
+          icon: 'list',
+          color: '#0B66E4',
+          bgLight: '#E6F0FF',
+          bgDark: '#1E293B',
+          avg: 0
+        };
+        const amountInDollars = b.amount / 100;
+        return {
+          ...catInfo,
+          id: b.id, // Keep the actual budget DB ID for updating/deleting
+          percent: sum > 0 ? (b.amount / sum) * 100 : 0
+        } as BudgetAllocation;
+      });
+      setAllocations(loadedAllocations);
+    } else {
+      setAllocations(DEFAULT_BUDGET_CATEGORIES);
+    }
+  }, [existingBudgets, isLoading]);
 
   // Custom category modal state
   const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
   const [customCategoryForm, setCustomCategoryForm] = useState<CustomCategoryForm>({
     label: '',
-    icon: 'heart-outline',
+    icon: CUSTOM_ICONS[0],
     color: CUSTOM_COLORS[0].color,
     bgLight: CUSTOM_COLORS[0].bgLight,
     bgDark: CUSTOM_COLORS[0].bgDark,
@@ -90,24 +191,48 @@ export default function BudgetSetup({ onDone }: BudgetSetupProps) {
   const [selectedColorIndex, setSelectedColorIndex] = useState(0);
   const [selectedIconIndex, setSelectedIconIndex] = useState(0);
 
-  const allocatedSum = useMemo(() => allocations.reduce((s, a) => s + a.percent, 0), [allocations]);
-
   const amounts = useMemo(
-    () => allocations.map((a) => ({ ...a, amount: Math.round((a.percent / 100) * totalNumber) })),
+    () =>
+      allocations.map((a) => ({
+        ...a,
+        amount: Math.round((a.percent / 100) * totalNumber),
+      })),
     [allocations, totalNumber]
   );
 
   const handleSliderChange = (index: number, newPercent: number) => {
-    const clampedPercent = Math.max(0, Math.min(100, newPercent));
     const newAllocations = [...allocations];
-    newAllocations[index] = { ...newAllocations[index], percent: clampedPercent };
+    newAllocations[index] = { ...newAllocations[index], percent: Math.max(0, newPercent) };
+    setAllocations(newAllocations);
+  };
+
+  const handleDeleteCategory = (index: number) => {
+    const catToRemove = allocations[index];
+    if (catToRemove.id && !catToRemove.id.startsWith('custom_') && !DEFAULT_BUDGET_CATEGORIES.some(c => c.id === catToRemove.id)) {
+        // Only push to deleted array if it's an existing budget from DB (not default, not unsaved custom)
+        setDeletedBudgetIds(prev => [...prev, catToRemove.id]);
+    } else if (existingBudgets?.some(b => b.id === catToRemove.id)) {
+        setDeletedBudgetIds(prev => [...prev, catToRemove.id]);
+    }
+
+    const newAllocations = [...allocations];
+    newAllocations.splice(index, 1);
     setAllocations(newAllocations);
   };
 
   const handleAutoSplit = () => {
-    const equalPercent = Math.floor(100 / budgetCategories.length);
-    const remainder = 100 % budgetCategories.length;
-    const newAllocations = budgetCategories.map((c, i) => ({
+    const count = allocations.length;
+    if (count === 0) return;
+
+    if (!totalNumber || totalNumber <= 0) {
+      alert('Please enter your total monthly budget first.');
+      return;
+    }
+
+    // Split the total budget amount equally — each gets 1/count of 100%
+    const equalPercent = Math.floor(100 / count);
+    const remainder = 100 % count;
+    const newAllocations = allocations.map((c, i) => ({
       ...c,
       percent: equalPercent + (i < remainder ? 1 : 0),
     }));
@@ -134,20 +259,22 @@ export default function BudgetSetup({ onDone }: BudgetSetupProps) {
   };
 
   const handleAddCustomCategory = () => {
-    if (!customCategoryForm.label.trim()) {
+    const label = customCategoryForm.label.trim();
+    if (!label) {
       alert('Please enter a category name');
       return;
     }
 
     const customId = `custom_${Date.now()}`;
-    const newCategory = {
+    const newCategory: BudgetAllocation = {
       id: customId,
-      label: customCategoryForm.label.trim(),
+      label: label,
       icon: customCategoryForm.icon,
       color: customCategoryForm.color,
       bgLight: customCategoryForm.bgLight,
       bgDark: customCategoryForm.bgDark,
       percent: 0,
+      avg: 0,
     };
 
     // Add the new category to allocations
@@ -156,7 +283,7 @@ export default function BudgetSetup({ onDone }: BudgetSetupProps) {
     // Reset form and close modal
     setCustomCategoryForm({
       label: '',
-      icon: 'heart-outline',
+      icon: CUSTOM_ICONS[0],
       color: CUSTOM_COLORS[0].color,
       bgLight: CUSTOM_COLORS[0].bgLight,
       bgDark: CUSTOM_COLORS[0].bgDark,
@@ -167,15 +294,28 @@ export default function BudgetSetup({ onDone }: BudgetSetupProps) {
   };
 
   const totalAllocated = amounts.reduce((s, a) => s + (a.amount || 0), 0);
-  const remaining = Math.max(0, totalNumber - totalAllocated);
+  const remaining = totalNumber - totalAllocated;
 
   const onStart = async () => {
     const now = new Date();
     const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
+    // Delete removed budgets
+    await Promise.all(
+      deletedBudgetIds.map(id => budgetRepository.delete(id))
+    );
+
     // Save each allocation as a budget record (category-level)
     await Promise.all(
-      amounts.map((a) => budgetRepository.save({ id: a.id, category: a.id, amount: Math.round((a.amount || 0) * 100), month }))
+      amounts.map((a) => {
+        const isExistingDbId = existingBudgets?.some(b => b.id === a.id);
+        return budgetRepository.save({
+          id: isExistingDbId ? a.id : undefined,
+          category: isExistingDbId ? existingBudgets!.find(b => b.id === a.id)!.category : a.id,
+          amount: Math.round((a.amount || 0) * 100),
+          month,
+        });
+      })
     );
 
     // Navigate to main tabs or call onDone if provided
@@ -186,64 +326,131 @@ export default function BudgetSetup({ onDone }: BudgetSetupProps) {
     }
   };
 
+  // Remaining budget banner style configuration
+  const remainingStyles = useMemo(() => {
+    const isDark = scheme === 'dark';
+    if (remaining > 0) {
+      return {
+        bg: isDark ? '#2D220B' : '#FFF5F5',
+        border: isDark ? '#543E12' : '#FCA5A5',
+        text: isDark ? '#FBBF24' : '#B91C1C',
+        dot: isDark ? '#F59E0B' : '#DC2626',
+      };
+    } else if (remaining === 0) {
+      return {
+        bg: isDark ? '#14221A' : '#F0FDF4',
+        border: isDark ? '#1E3E2A' : '#BBF7D0',
+        text: isDark ? '#4ADE80' : '#15803D',
+        dot: isDark ? '#22C55E' : '#16A34A',
+      };
+    } else {
+      return {
+        bg: isDark ? '#271C1C' : '#FEF2F2',
+        border: isDark ? '#4C1F1F' : '#FCA5A5',
+        text: isDark ? '#F87171' : '#B91C1C',
+        dot: isDark ? '#EF4444' : '#DC2626',
+      };
+    }
+  }, [remaining, scheme]);
+
+  const pageBgColor = scheme === 'dark' ? '#121212' : '#F8F9FA';
+  const cardBgColor = scheme === 'dark' ? '#1E1E1E' : '#FFFFFF';
+  const borderCardColor = scheme === 'dark' ? '#2D2D2D' : '#E2E8F0';
+
   return (
-    <ThemedView style={styles.container} type="background">
-      <ScrollView contentContainerStyle={styles.content}>
+    <ThemedView style={[styles.container, { backgroundColor: pageBgColor }]} type="background">
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Header */}
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()}>
-            <Ionicons name="chevron-back" size={28} color={colors.text} />
-          </Pressable>
-          <ThemedText type="title" style={styles.headerTitle}>
+          <TouchableOpacity onPress={() => router.back()} activeOpacity={0.7}>
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <ThemedText style={[styles.headerTitle, { color: '#0B66E4' }]}>
             Spendro
           </ThemedText>
           <Ionicons name="help-circle-outline" size={24} color={colors.text} />
         </View>
 
-        <ThemedText type="title" style={styles.title}>
+        <ThemedText type="title" style={[styles.title, { color: colors.text }]}>
           Set Your Monthly Budget
         </ThemedText>
-        <ThemedText type="small" style={styles.subtitle}>
+        <ThemedText type="small" style={[styles.subtitle, { color: colors.textSecondary }]}>
           Take control of your finances by setting a clear spending goal.
         </ThemedText>
 
         {/* Editable Budget Card */}
-        <View style={[styles.card, { backgroundColor: theme.primary }]}>
+        <View style={[styles.card, { backgroundColor: '#0B66E4' }]}>
+          {/* Decorative shapes resembling overlapping finance cards */}
+          <View style={styles.cardDecorativeContainer}>
+            <View style={styles.cardDecorativeShape1} />
+            <View style={styles.cardDecorativeShape2} />
+          </View>
+
           <ThemedText type="smallBold" style={styles.cardLabel}>
             TOTAL MONTHLY BUDGET
           </ThemedText>
           <View style={styles.budgetInputContainer}>
-            <ThemedText type="subtitle" style={styles.currencySymbol}>
-              $
-            </ThemedText>
+            <ThemedText style={styles.currencySymbol}>{symbol} </ThemedText>
             <TextInput
-              style={[styles.budgetInput, { color: '#fff' }]}
-              value={totalBudget}
-              onChangeText={setTotalBudget}
+              style={styles.budgetInput}
+              value={totalBudget ? Number(totalBudget).toLocaleString() : ''}
+              onChangeText={(text) => {
+                // Strip everything except digits before storing
+                const raw = text.replace(/[^0-9]/g, '');
+                setTotalBudget(raw);
+              }}
               placeholder="0"
               placeholderTextColor="rgba(255,255,255,0.5)"
               keyboardType="number-pad"
             />
           </View>
-          <ThemedText type="small" style={styles.recommendedText}>
-            ✨ Recommended for your income
+          <View style={styles.recommendedPill}>
+            <Ionicons name="sparkles" size={14} color="#ffffff" style={{ marginRight: 6 }} />
+            <ThemedText type="smallBold" style={styles.recommendedText}>
+              Recommended for your income
+            </ThemedText>
+          </View>
+        </View>
+
+        {/* Remaining to Allocate — shown above categories */}
+        <View
+          style={[
+            styles.remaining,
+            {
+              backgroundColor: remainingStyles.bg,
+              borderColor: remainingStyles.border,
+            },
+          ]}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={[styles.remainingDot, { backgroundColor: remainingStyles.dot }]} />
+            <ThemedText type="smallBold" style={{ color: remainingStyles.text }}>
+              Remaining to Allocate
+            </ThemedText>
+          </View>
+          <ThemedText style={[styles.remainingAmount, { color: remainingStyles.text }]}>
+            {symbol} {remaining.toLocaleString()}
           </ThemedText>
         </View>
 
-        {/* Allocate by Category Header with AUTO-SPLIT */}
+        {/* Allocate by Category Header */}
         <View style={styles.sectionHeader}>
-          <ThemedText type="smallBold" style={styles.sectionTitle}>
+          <ThemedText type="smallBold" style={[styles.sectionTitle, { color: colors.text }]}>
             Allocate by Category
           </ThemedText>
-          <Pressable style={styles.autoSplitButton} onPress={handleAutoSplit}>
-            <ThemedText type="small" style={styles.autoSplitText}>
+          <TouchableOpacity style={styles.autoSplitButton} onPress={handleAutoSplit} activeOpacity={0.7}>
+            <ThemedText type="smallBold" style={styles.autoSplitText}>
               AUTO-SPLIT
             </ThemedText>
-          </Pressable>
+          </TouchableOpacity>
         </View>
 
         {/* Category Cards */}
         {amounts.map((cat, index) => (
-          <View key={cat.id} style={[styles.catCard, { borderColor: colors.backgroundElement }]}>
+          <View
+            key={cat.id}
+            style={[styles.catCard, { backgroundColor: cardBgColor, borderColor: borderCardColor }]}
+          >
             <View style={styles.catHeader}>
               <View
                 style={[
@@ -251,63 +458,74 @@ export default function BudgetSetup({ onDone }: BudgetSetupProps) {
                   { backgroundColor: scheme === 'dark' ? cat.bgDark : cat.bgLight },
                 ]}
               >
-                <Ionicons name={cat.icon} size={24} color={cat.color} />
+                <Ionicons name={cat.icon} size={24} color={cat.color} style={{ textAlign: 'center' }} />
               </View>
-              <ThemedText type="default" style={styles.catTitle}>
+              <ThemedText style={[styles.catTitle, { color: colors.text }]}>
                 {cat.label}
               </ThemedText>
-              <View style={{ flex: 1 }} />
-              <ThemedText type="smallBold" style={styles.catAmount}>
-                ${(cat.amount || 0).toLocaleString()}
+              <ThemedText style={[styles.catAmount, { color: colors.text }]}>
+                {symbol} {(cat.amount || 0).toLocaleString()}
               </ThemedText>
+              <TouchableOpacity onPress={() => handleDeleteCategory(index)} style={{ marginLeft: 8 }} activeOpacity={0.7}>
+                <Ionicons name="trash-outline" size={20} color="#EF4444" />
+              </TouchableOpacity>
             </View>
 
             {/* Slider */}
-            <Host  style={styles.sliderContainer}>
+            <View style={styles.sliderWrapper}>
               <Slider
+                style={styles.slider}
+                minimumValue={0}
+                maximumValue={100}
+                step={1}
                 value={cat.percent}
                 onValueChange={(value) => handleSliderChange(index, value)}
-                min={0}
-                max={100}
-                step={1}
+                minimumTrackTintColor="#E2E8F0"
+                maximumTrackTintColor="#E2E8F0"
+                thumbTintColor="#0B66E4"
               />
-            </Host>
+            </View>
 
             <View style={styles.catFooter}>
-              <ThemedText type="small">
-                {cat.percent}% of budget
+              <ThemedText type="small" style={{ color: colors.textSecondary }}>
+                {Math.round(cat.percent)}% of budget
               </ThemedText>
-              <ThemedText type="small">
-                Avg. ${Math.round(cat.amount || 0).toLocaleString()}
+              <ThemedText type="small" style={{ color: colors.textSecondary }}>
+                Avg. ${cat.avg.toLocaleString()}
               </ThemedText>
             </View>
           </View>
         ))}
 
+        {/* Add Custom Category Button */}
         <TouchableOpacity
           onPress={() => setShowAddCategoryModal(true)}
-          style={[styles.addCategoryButton, { borderColor: colors.backgroundElement }]}
+          style={[
+            styles.addCategoryButton,
+            {
+              borderColor: scheme === 'dark' ? '#3F3F46' : '#CBD5E1',
+              backgroundColor: scheme === 'dark' ? '#1E1E1E' : '#FFFFFF',
+            },
+          ]}
+          activeOpacity={0.7}
         >
-          <Ionicons name="add" size={24} color={colors.text} />
-          <ThemedText type="default" style={styles.addButtonText}>
+          <Ionicons name="add" size={20} color={colors.textSecondary} />
+          <ThemedText style={[styles.addButtonText, { color: colors.textSecondary }]}>
             Add Custom Category
           </ThemedText>
         </TouchableOpacity>
 
-        {/* Remaining to Allocate */}
-        <View style={[styles.remaining, { borderColor: '#DC2626' }]}>
-          <ThemedText type="smallBold">
-            Remaining to Allocate
-          </ThemedText>
-          <ThemedText type="default" style={[styles.remainingAmount, { color: theme.primary }]}>
-            ${remaining.toLocaleString()}
-          </ThemedText>
-        </View>
-      </ScrollView>
 
-      <View style={styles.footer}>
-        <Button title="Start Tracking" onPress={onStart} />
-      </View>
+
+        {/* Action Button at the bottom of list */}
+        <TouchableOpacity
+          style={[styles.startButton, { backgroundColor: '#0B66E4' }]}
+          onPress={onStart}
+          activeOpacity={0.8}
+        >
+          <ThemedText style={styles.startButtonText}>Start Tracking</ThemedText>
+        </TouchableOpacity>
+      </ScrollView>
 
       {/* Add Custom Category Modal */}
       <Modal
@@ -316,148 +534,149 @@ export default function BudgetSetup({ onDone }: BudgetSetupProps) {
         transparent={false}
         onRequestClose={() => setShowAddCategoryModal(false)}
       >
-        <ThemedView style={styles.modalContainer} type="background">
-          <ScrollView contentContainerStyle={styles.modalContent}>
-            {/* Modal Header */}
-            <View style={styles.modalHeader}>
-              <Pressable onPress={() => setShowAddCategoryModal(false)}>
-                <ThemedText type="smallBold" style={styles.closeButton}>
-                  ✕
-                </ThemedText>
-              </Pressable>
-              <ThemedText type="title" style={styles.modalTitle}>
-                Add Custom Category
-              </ThemedText>
-              <View style={{ width: 20 }} />
-            </View>
+        <ThemedView style={[styles.modalContainer, { backgroundColor: pageBgColor }]} type="background">
+          {/* Modal Header */}
+          <View style={[styles.modalHeader, { borderBottomColor: borderCardColor }]}>
+            <TouchableOpacity onPress={() => setShowAddCategoryModal(false)} style={styles.modalBackButton} activeOpacity={0.7}>
+              <Ionicons name="arrow-back" size={24} color="#0B66E4" />
+            </TouchableOpacity>
+            <ThemedText style={styles.modalTitle}>
+              Add Category
+            </ThemedText>
+          </View>
 
+          <ScrollView contentContainerStyle={styles.modalContent} showsVerticalScrollIndicator={false}>
             {/* Category Name Input */}
             <View style={styles.formGroup}>
-              <ThemedText type="smallBold" style={styles.formLabel}>
-                Category Name
-              </ThemedText>
-              <TextInput
+              <ThemedText style={styles.formLabel}>CATEGORY DETAILS</ThemedText>
+              <View
                 style={[
-                  styles.formInput,
+                  styles.formInputContainer,
                   {
-                    color: colors.text,
-                    borderColor: colors.backgroundElement,
-                    backgroundColor: colors.backgroundElement,
+                    borderColor: scheme === 'dark' ? '#3F3F46' : '#CBD5E1',
+                    backgroundColor: scheme === 'dark' ? '#1E1E1E' : '#FFFFFF',
                   },
                 ]}
-                placeholder="e.g., Pet Care"
-                placeholderTextColor={colors.textSecondary}
-                value={customCategoryForm.label}
-                onChangeText={(text) =>
-                  setCustomCategoryForm({ ...customCategoryForm, label: text })
-                }
-              />
+              >
+                <TextInput
+                  style={[styles.formInput, { color: colors.text }]}
+                  placeholder="e.g., Gym, Gifts"
+                  placeholderTextColor={scheme === 'dark' ? '#64748B' : '#94A3B8'}
+                  value={customCategoryForm.label}
+                  onChangeText={(text) =>
+                    setCustomCategoryForm({ ...customCategoryForm, label: text })
+                  }
+                />
+                <Ionicons
+                  name="pencil"
+                  size={20}
+                  color={scheme === 'dark' ? '#64748B' : '#94A3B8'}
+                  style={{ marginLeft: 8 }}
+                />
+              </View>
             </View>
 
             {/* Icon Selector */}
             <View style={styles.formGroup}>
-              <ThemedText type="smallBold" style={styles.formLabel}>
-                Choose Icon
-              </ThemedText>
+              <View style={styles.formSectionHeader}>
+                <ThemedText style={styles.formLabel}>SELECT ICON</ThemedText>
+                <TouchableOpacity activeOpacity={0.7}>
+                  <ThemedText style={styles.viewAllText}>View All</ThemedText>
+                </TouchableOpacity>
+              </View>
               <View style={styles.iconGrid}>
-                {CUSTOM_ICONS.map((icon, index) => (
-                  <Pressable
-                    key={index}
-                    onPress={() => handleIconSelect(index)}
-                    style={[
-                      styles.iconOption,
-                      selectedIconIndex === index && {
-                        backgroundColor: theme.primary,
-                        borderColor: theme.primary,
-                      },
-                    ]}
-                  >
-                    <Ionicons
-                      name={icon}
-                      size={32}
-                      color={selectedIconIndex === index ? '#fff' : colors.text}
-                    />
-                  </Pressable>
-                ))}
+                {CUSTOM_ICONS.map((icon, index) => {
+                  const isSelected = selectedIconIndex === index;
+                  return (
+                    <TouchableOpacity
+                      key={icon}
+                      onPress={() => handleIconSelect(index)}
+                      style={[
+                        styles.iconOption,
+                        {
+                          backgroundColor: isSelected
+                            ? '#0B66E4'
+                            : scheme === 'dark'
+                            ? '#27272A'
+                            : '#F1F5F9',
+                        },
+                      ]}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons
+                        name={icon}
+                        size={24}
+                        color={isSelected ? '#FFFFFF' : scheme === 'dark' ? '#A1A1AA' : '#475569'}
+                        style={{ textAlign: 'center' }}
+                      />
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </View>
 
             {/* Color Selector */}
             <View style={styles.formGroup}>
-              <ThemedText type="smallBold" style={styles.formLabel}>
-                Choose Color
-              </ThemedText>
-              <View style={styles.colorGrid}>
-                {CUSTOM_COLORS.map((colorOption, index) => (
-                  <Pressable
-                    key={index}
-                    onPress={() => handleColorSelect(index)}
-                    style={[
-                      styles.colorOption,
-                      {
-                        backgroundColor: colorOption.color,
-                        borderWidth: selectedColorIndex === index ? 3 : 2,
-                        borderColor:
-                          selectedColorIndex === index ? '#000' : 'transparent',
-                      },
-                    ]}
-                  />
-                ))}
+              <ThemedText style={styles.formLabel}>CATEGORY COLOR</ThemedText>
+              <View style={styles.colorRow}>
+                {CUSTOM_COLORS.map((colorOption, index) => {
+                  const isSelected = selectedColorIndex === index;
+                  return (
+                    <View
+                      key={index}
+                      style={[
+                        styles.colorCircleOuter,
+                        isSelected && { borderColor: colorOption.color },
+                      ]}
+                    >
+                      <TouchableOpacity
+                        onPress={() => handleColorSelect(index)}
+                        style={[styles.colorCircleInner, { backgroundColor: colorOption.color }]}
+                        activeOpacity={0.8}
+                      />
+                    </View>
+                  );
+                })}
               </View>
             </View>
 
             {/* Preview */}
             <View style={styles.formGroup}>
-              <ThemedText type="smallBold" style={styles.formLabel}>
-                Preview
-              </ThemedText>
-              <View
+              <ThemedText style={styles.formLabel}>PREVIEW</ThemedText>
+              <ThemedView
                 style={[
                   styles.previewCard,
-                  { borderColor: colors.backgroundElement },
+                  {
+                    borderColor: borderCardColor,
+                    backgroundColor: cardBgColor,
+                  },
                 ]}
               >
-                <View
-                  style={[
-                    styles.previewIcon,
-                    {
-                      backgroundColor:
-                        scheme === 'dark'
-                          ? customCategoryForm.bgDark
-                          : customCategoryForm.bgLight,
-                    },
-                  ]}
-                >
-                  <Ionicons
-                    name={customCategoryForm.icon}
-                    size={32}
-                    color={customCategoryForm.color}
-                  />
+                <View style={[styles.previewIconCircle, { backgroundColor: customCategoryForm.color }]}>
+                  <Ionicons name={customCategoryForm.icon} size={24} color="#FFFFFF" style={{ textAlign: 'center' }} />
                 </View>
-                <ThemedText type="default" style={styles.previewLabel}>
-                  {customCategoryForm.label || 'Unnamed Category'}
-                </ThemedText>
-              </View>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <ThemedText style={[styles.previewTitle, { color: colors.text }]}>
+                    {customCategoryForm.label.trim() || 'Gifts'}
+                  </ThemedText>
+                  <ThemedText style={styles.previewSubtitle}>0 Transactions</ThemedText>
+                </View>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <ThemedText style={styles.previewBudgetLabel}>Budget</ThemedText>
+                  <ThemedText style={[styles.previewBudgetValue, { color: colors.text }]}>{symbol} 0.00</ThemedText>
+                </View>
+              </ThemedView>
             </View>
-          </ScrollView>
 
-          {/* Modal Footer Buttons */}
-          <View style={styles.modalFooter}>
-            <Pressable
-              onPress={() => setShowAddCategoryModal(false)}
-              style={[styles.modalButton, styles.cancelButton]}
-            >
-              <ThemedText type="smallBold">Cancel</ThemedText>
-            </Pressable>
-            <Pressable
+            {/* Create Category Button */}
+            <TouchableOpacity
+              style={[styles.createButton, { backgroundColor: '#0B66E4' }]}
               onPress={handleAddCustomCategory}
-              style={[styles.modalButton, styles.addButton]}
+              activeOpacity={0.8}
             >
-              <ThemedText type="smallBold" style={styles.addButtonModalText}>
-                Add Category
-              </ThemedText>
-            </Pressable>
-          </View>
+              <ThemedText style={styles.createButtonText}>Create Category</ThemedText>
+            </TouchableOpacity>
+          </ScrollView>
         </ThemedView>
       </Modal>
     </ThemedView>
@@ -466,23 +685,25 @@ export default function BudgetSetup({ onDone }: BudgetSetupProps) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { padding: 20, paddingBottom: 140 },
+  content: { padding: 20, paddingBottom: 60 },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 24,
+    marginTop: Platform.OS === 'ios' ? 0 : 12,
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   title: {
     fontSize: 28,
-    fontWeight: '700',
+    fontWeight: '800',
     marginBottom: 8,
   },
   subtitle: {
+    fontSize: 14,
     marginBottom: 24,
     lineHeight: 20,
   },
@@ -490,34 +711,51 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 24,
     marginBottom: 28,
+    position: 'relative',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 6,
   },
   cardLabel: {
-    color: '#fff',
+    color: '#ffffff',
     opacity: 0.9,
-    marginBottom: 12,
-    fontSize: 12,
-    letterSpacing: 0.5,
+    marginBottom: 8,
+    fontSize: 11,
+    letterSpacing: 0.8,
   },
   budgetInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   currencySymbol: {
-    color: '#fff',
-    fontSize: 32,
+    color: '#ffffff',
+    fontSize: 34,
     fontWeight: '700',
-    marginRight: 8,
+    marginRight: 6,
   },
   budgetInput: {
-    fontSize: 40,
-    fontWeight: '700',
+    color: '#ffffff',
+    fontSize: 36,
+    fontWeight: '800',
     flex: 1,
+    padding: 0,
+  },
+  recommendedPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
   },
   recommendedText: {
-    color: '#fff',
-    opacity: 0.85,
-    marginTop: 8,
+    color: '#ffffff',
+    fontSize: 12,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -526,59 +764,72 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sectionTitle: {
-    marginTop: 8,
     fontSize: 16,
+    fontWeight: '700',
   },
   autoSplitButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: 6,
+    backgroundColor: '#E6F0FF',
   },
   autoSplitText: {
-    color: '#2563EB',
-    fontWeight: '600',
-    fontSize: 12,
+    color: '#0B66E4',
+    fontSize: 11,
+    letterSpacing: 0.5,
   },
   catCard: {
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
-    marginBottom: 12,
-    backgroundColor: 'transparent',
+    marginBottom: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   catHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
   },
   catIcon: {
-    width: 48,
-    height: 48,
+    width: 44,
+    height: 44,
     borderRadius: 12,
-    marginRight: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },
   catTitle: {
     fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 12,
     flex: 1,
   },
   catAmount: {
     fontSize: 16,
     fontWeight: '700',
   },
-  sliderContainer: {
-    marginVertical: 12,
+  sliderWrapper: {
+    marginVertical: 10,
+    height: 36,
+    justifyContent: 'center',
+  },
+  slider: {
+    width: '100%',
+    height: 40,
   },
   catFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 2,
   },
   addCategoryButton: {
-    marginTop: 8,
+    marginTop: 6,
     marginBottom: 16,
-    padding: 16,
-    borderWidth: 1,
+    paddingVertical: 16,
+    borderWidth: 1.5,
     borderStyle: 'dashed',
     borderRadius: 12,
     flexDirection: 'row',
@@ -587,134 +838,217 @@ const styles = StyleSheet.create({
   },
   addButtonText: {
     marginLeft: 8,
+    fontSize: 15,
+    fontWeight: '600',
   },
   remaining: {
-    marginTop: 12,
-    marginBottom: 12,
+    marginTop: 0,
+    marginBottom: 20,
     padding: 16,
     borderWidth: 1,
     borderRadius: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  remainingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 8,
   },
   remainingAmount: {
     fontWeight: '700',
     fontSize: 18,
   },
-  footer: {
+  startButton: {
+    height: 54,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#0B66E4',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+    marginBottom: Platform.OS === 'ios' ? 24 : 16,
+  },
+  startButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  // Budget card decorative shapes
+  cardDecorativeContainer: {
     position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 24,
-    paddingHorizontal: 20,
+    right: -25,
+    top: -25,
+    width: 140,
+    height: 140,
+    opacity: 0.12,
+  },
+  cardDecorativeShape1: {
+    position: 'absolute',
+    right: 15,
+    top: 25,
+    width: 90,
+    height: 110,
+    borderRadius: 12,
+    borderWidth: 5,
+    borderColor: '#ffffff',
+    transform: [{ rotate: '15deg' }],
+  },
+  cardDecorativeShape2: {
+    position: 'absolute',
+    right: -10,
+    top: 35,
+    width: 90,
+    height: 110,
+    borderRadius: 12,
+    borderWidth: 5,
+    borderColor: '#ffffff',
+    transform: [{ rotate: '30deg' }],
   },
   // Modal styles
   modalContainer: {
     flex: 1,
   },
-  modalContent: {
-    padding: 20,
-    paddingBottom: 200,
-  },
   modalHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
-    marginTop: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    marginTop: Platform.OS === 'ios' ? 44 : 12,
   },
-  closeButton: {
-    fontSize: 28,
-    fontWeight: '400',
+  modalBackButton: {
+    padding: 4,
   },
   modalTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '700',
-    flex: 1,
-    textAlign: 'center',
+    color: '#0B66E4',
+    marginLeft: 12,
+  },
+  modalContent: {
+    padding: 20,
+    paddingBottom: 60,
   },
   formGroup: {
     marginBottom: 24,
   },
   formLabel: {
-    marginBottom: 12,
-    fontSize: 16,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748B',
+    letterSpacing: 0.8,
+    marginBottom: 8,
   },
-  formInput: {
+  formSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  viewAllText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0B66E4',
+  },
+  formInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderWidth: 1,
     borderRadius: 12,
-    padding: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  formInput: {
+    flex: 1,
     fontSize: 16,
+    padding: 0,
+    fontWeight: '500',
   },
   iconGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 10,
+    justifyContent: 'space-between',
   },
   iconOption: {
-    width: '23%',
-    aspectRatio: 1,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: 'transparent',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  colorGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  colorOption: {
     width: '18%',
     aspectRatio: 1,
     borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  colorCircleOuter: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  colorCircleInner: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  colorRow: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'center',
   },
   previewCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderWidth: 1,
     borderRadius: 12,
     padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
   },
-  previewIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 12,
+  previewIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
   },
-  previewLabel: {
+  previewTitle: {
     fontSize: 16,
-    flex: 1,
+    fontWeight: '600',
   },
-  modalFooter: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    flexDirection: 'row',
-    gap: 12,
-    padding: 20,
-    paddingBottom: 24,
+  previewSubtitle: {
+    fontSize: 14,
+    color: '#64748B',
+    marginTop: 2,
   },
-  modalButton: {
-    flex: 1,
-    paddingVertical: 14,
+  previewBudgetLabel: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+  previewBudgetValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  createButton: {
+    height: 54,
     borderRadius: 12,
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 12,
+    shadowColor: '#0B66E4',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+    marginBottom: 40,
   },
-  cancelButton: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-  },
-  addButton: {
-    backgroundColor: '#2563EB',
-  },
-  addButtonModalText: {
-    color: '#fff',
+  createButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });

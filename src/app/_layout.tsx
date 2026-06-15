@@ -26,10 +26,10 @@ const queryClient = new QueryClient({
 });
 
 
-if(!__DEV__){
+if (!__DEV__) {
   Clarity.initialize('x4bzw27rao', {
-  logLevel: Clarity.LogLevel.None, // Note: Use "LogLevel.Verbose" value while testing to debug initialization issues.
-});
+    logLevel: Clarity.LogLevel.Verbose, // Note: Use "LogLevel.Verbose" value while testing to debug initialization issues.
+  });
 }
 
 export default function RootLayout() {
@@ -46,7 +46,7 @@ export default function RootLayout() {
   // Initialize SQLite database and sync engine
   useEffect(() => {
     let cleanupSync: (() => void) | null = null;
-    
+
     async function bootstrap() {
       try {
         await initDb();
@@ -65,7 +65,7 @@ export default function RootLayout() {
     };
   }, []);
 
-  
+
 
   // Initialize auth and settings state
   useEffect(() => {
@@ -147,30 +147,30 @@ export default function RootLayout() {
     );
   }
 
-    if (hasCompletedFirstTimeSetup === null) {
-      return (
-        <SafeAreaView
-          style={[styles.loadingScreen, { backgroundColor: colors.background }]}
-          edges={['bottom', 'left', 'right', 'top']}>
-          <ActivityIndicator color={primaryColor} size="large" />
-        </SafeAreaView>
-      );
-    }
+  if (hasCompletedFirstTimeSetup === null) {
+    return (
+      <SafeAreaView
+        style={[styles.loadingScreen, { backgroundColor: colors.background }]}
+        edges={['bottom', 'left', 'right', 'top']}>
+        <ActivityIndicator color={primaryColor} size="large" />
+      </SafeAreaView>
+    );
+  }
 
-    if (!hasCompletedFirstTimeSetup) {
-      return (
-        <QueryClientProvider client={queryClient}>
-          <ThemeProvider value={scheme === 'dark' ? DarkTheme : DefaultTheme}>
-            <SetupFlow
-              onDone={async () => {
-                await setFirstTimeSetupComplete();
-                setHasCompletedFirstTimeSetup(true);
-              }}
-            />
-          </ThemeProvider>
-        </QueryClientProvider>
-      );
-    }
+  if (!hasCompletedFirstTimeSetup) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider value={scheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <SetupFlow
+            onDone={async () => {
+              await setFirstTimeSetupComplete();
+              setHasCompletedFirstTimeSetup(true);
+            }}
+          />
+        </ThemeProvider>
+      </QueryClientProvider>
+    );
+  }
 
   return (
     <QueryClientProvider client={queryClient}>

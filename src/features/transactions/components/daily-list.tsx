@@ -39,7 +39,7 @@ export function DailyList({ groupedDailyItems, monthLabel }: DailyListProps) {
                 const sign = isExpense ? '-' : '+';
                 const cat = getCategoryByNameOrId(trans.category);
                 const symbol = getCurrencySymbol(trans.currency);
-                const amountStr = `${sign}${symbol}${trans.amount.toFixed(2)}`;
+                const amountStr = `${sign}${symbol} ${trans.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                 return (
                   <Pressable
                     key={trans.id}

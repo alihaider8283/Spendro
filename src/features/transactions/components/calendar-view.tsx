@@ -77,7 +77,7 @@ export function CalendarView({
                       numberOfLines={1}
                       adjustsFontSizeToFit
                     >
-                      -${Math.round(totalAmount)}
+                      -${totalAmount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                     </ThemedText>
                   )}
                 </>
@@ -101,7 +101,7 @@ export function CalendarView({
             {selectedDateTransactions.length > 0
               ? `-$${selectedDateTransactions
                   .reduce((sum, t) => sum + (t.type === 'expense' ? t.amount : 0), 0)
-                  .toFixed(2)}`
+                  .toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
               : '$0.00'}
           </ThemedText>
         </View>
@@ -116,7 +116,7 @@ export function CalendarView({
             const sign = isExpense ? '-' : '+';
             const cat = getCategoryByNameOrId(trans.category);
             const symbol = getCurrencySymbol(trans.currency);
-            const amountStr = `${sign}${symbol}${trans.amount.toFixed(2)}`;
+            const amountStr = `${sign}${symbol} ${trans.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
             return (
               <Pressable
