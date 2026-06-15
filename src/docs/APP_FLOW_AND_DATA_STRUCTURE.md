@@ -55,7 +55,7 @@ A concise, end-to-end overview of the Spendro mobile app from launch (splash) th
 - Dashboard: balance, recent transactions (FlatList), quick add FAB
 - Scan: camera flow to capture/attach receipt images
 - Analytics: charts and category breakdown
-- Budget: create/edit budgets, show remaining amounts
+- Budget: per-month budgets; inherits latest defaults if month not yet configured; auto-cloned on first transaction
 - Settings: toggle cloud backup, theme, logout
 - Expense add/edit: form using React Hook Form + Zod validation
 
@@ -199,6 +199,32 @@ Fields:
 
 ---
 
+## Monthly Budget Inheritance
+
+Each calendar month (`YYYY-MM`) has its own set of budget rows in the `budgets` table.
+
+### Inheritance Rules
+
+1. **Month has budgets** → show those budgets directly. No cloning.
+2. **Month has no budgets, defaults exist** → `ensureMonthBudgets(month)` clones the most-recently-saved budget set into the new month (new IDs, same `category` + `amount`). The clone is written to SQLite and queued for sync.
+3. **No defaults at all** → empty state; user prompted to set up budgets via `/budget-setup`.
+
+### Trigger Points
+
+- **Budget tab opens** → `useBudgetsForMonth(currentMonth)` calls `ensureMonthBudgets` automatically.
+- **Transaction created** → `transactionRepository.create()` calls `ensureMonthBudgets(month)` fire-and-forget so the budget tab is ready immediately.
+
+### Key Methods
+
+| Method | Location | Purpose |
+|--------|----------|---------|
+| `getForMonth(month)` | `budgetRepository` | Fetch budgets for a specific `YYYY-MM` |
+| `getLatestDefaults()` | `budgetRepository` | Return most-recently-updated budgets as template |
+| `ensureMonthBudgets(month)` | `budgetRepository` | Idempotent — returns existing or auto-cloned budgets |
+| `useBudgetsForMonth(month)` | `useBudgets.ts` hook | React Query wrapper around `ensureMonthBudgets` |
+
+---
+
 ## Example Transaction JSON
 
 ```json
@@ -250,4 +276,4 @@ If you want, I can also:
 
 ---
 
-_Last updated: 2026-06-12_
+_Last updated: 2026-06-15_

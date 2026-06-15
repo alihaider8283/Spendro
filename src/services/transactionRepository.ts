@@ -1,6 +1,7 @@
 import { useSettingsStore } from '../store/settingsStore';
 import { getDb, getMonthStrFromTimestamp, recalculateMonthlyStats } from './dbService';
 import { triggerSync } from './syncEngine';
+import { budgetRepository } from './budgetRepository';
 
 export interface Transaction {
   id: string;
@@ -147,6 +148,11 @@ export const transactionRepository = {
     // Recalculate stats for the month of this transaction
     const month = getMonthStrFromTimestamp(newTx.transactionDate);
     await recalculateMonthlyStats(month);
+
+    // Auto-create budgets for this month from defaults if none exist (fire-and-forget)
+    budgetRepository.ensureMonthBudgets(month).catch((err) =>
+      console.error('ensureMonthBudgets error after create transaction:', err)
+    );
 
     // Asynchronously trigger sync engine
     triggerSync().catch((err) => console.error('Sync trigger error in create transaction:', err));

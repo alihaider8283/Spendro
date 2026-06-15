@@ -2,12 +2,25 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { budgetRepository, Budget } from '@/services/budgetRepository';
 
 /**
- * Hook to retrieve all active budgets
+ * Hook to retrieve all active budgets (all months)
  */
 export const useBudgets = () => {
   return useQuery<Budget[]>({
     queryKey: ['budgets'],
     queryFn: () => budgetRepository.getAll(),
+  });
+};
+
+/**
+ * Hook to retrieve budgets for a specific month.
+ * If no budgets exist for that month, auto-clones the latest default
+ * budgets into that month (ensureMonthBudgets).
+ */
+export const useBudgetsForMonth = (month: string) => {
+  return useQuery<Budget[]>({
+    queryKey: ['budgets', month],
+    queryFn: () => budgetRepository.ensureMonthBudgets(month),
+    enabled: !!month,
   });
 };
 

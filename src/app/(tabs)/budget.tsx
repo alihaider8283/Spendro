@@ -15,7 +15,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors, Spacing } from '@/constants/theme';
 import { getCategoryByNameOrId, getCurrencySymbol } from '@/features/expenses/types';
-import { useBudgets } from '@/hooks/useBudgets';
+import { useBudgetsForMonth } from '@/hooks/useBudgets';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useSettingsStore } from '@/store/settingsStore';
 
@@ -35,20 +35,14 @@ export default function BudgetScreen() {
   const currency = useSettingsStore((state) => state.currency) || 'USD';
   const symbol = getCurrencySymbol(currency);
 
-  const { data: budgets = [] } = useBudgets();
-  const { data: transactions = [] } = useTransactions();
-
   const currentMonth = useMemo(
     () => `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`,
     []
   );
 
-  const budgetsForMonth = useMemo(
-    () => budgets.filter((budget) => budget.month === currentMonth),
-    [budgets, currentMonth]
-  );
+  const { data: monthlyBudgets = [], isLoading: budgetsLoading } = useBudgetsForMonth(currentMonth);
+  const { data: transactions = [] } = useTransactions();
 
-  const monthlyBudgets = budgetsForMonth.length > 0 ? budgetsForMonth : budgets;
 
   const monthExpenses = useMemo(
     () =>

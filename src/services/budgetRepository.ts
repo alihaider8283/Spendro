@@ -150,5 +150,74 @@ export const budgetRepository = {
   hardDelete: async (id: string): Promise<void> => {
     const db = getDb();
     await db.runAsync(`DELETE FROM budgets WHERE id = ?`, [id]);
-  }
+  },
+
+  /**
+   * Fetch all active budgets for a specific month (YYYY-MM)
+   */
+  getForMonth: async (month: string): Promise<Budget[]> => {
+    const db = getDb();
+    const rows = await db.getAllAsync<Budget>(
+      `SELECT * FROM budgets WHERE month = ? AND syncStatus != 'deleted' ORDER BY createdAt ASC`,
+      [month]
+    );
+    return rows;
+  },
+
+  /**
+   * Get the most recently updated set of budgets to use as the default template.
+   * Groups by the month that has the highest updatedAt timestamp and returns
+   * all budgets for that month.
+   */
+  getLatestDefaults: async (): Promise<Budget[]> => {
+    const db = getDb();
+    // Find the month with the most-recently updated budget entry
+    const latestRow = await db.getFirstAsync<{ month: string }>(
+      `SELECT month FROM budgets WHERE syncStatus != 'deleted' ORDER BY updatedAt DESC LIMIT 1`
+    );
+    if (!latestRow) return [];
+    const rows = await db.getAllAsync<Budget>(
+      `SELECT * FROM budgets WHERE month = ? AND syncStatus != 'deleted' ORDER BY createdAt ASC`,
+      [latestRow.month]
+    );
+    return rows;
+  },
+
+  /**
+   * Ensure the given month has budgets. If it doesn't, clone the latest
+   * default budgets into that month and return them. If it already has
+   * budgets, just return them. Safe to call multiple times — idempotent.
+   */
+  ensureMonthBudgets: async (month: string): Promise<Budget[]> => {
+    const existing = await budgetRepository.getForMonth(month);
+    if (existing.length > 0) return existing;
+
+    const defaults = await budgetRepository.getLatestDefaults();
+    if (defaults.length === 0) return []; // No defaults configured yet
+
+    const now = Date.now();
+    const cloned: Budget[] = defaults.map((d) => ({
+      id: generateId('bg'),
+      category: d.category,
+      amount: d.amount,
+      month,
+      syncStatus: 'pending' as const,
+      createdAt: now,
+      updatedAt: now,
+    }));
+
+    const db = getDb();
+    for (const b of cloned) {
+      await db.runAsync(
+        `INSERT INTO budgets (id, category, amount, month, syncStatus, createdAt, updatedAt)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [b.id, b.category, b.amount, b.month, b.syncStatus, b.createdAt, b.updatedAt]
+      );
+    }
+
+    // Trigger sync for the new records (non-blocking)
+    triggerSync().catch((err) => console.error('Sync trigger error in ensureMonthBudgets:', err));
+
+    return cloned;
+  },
 };
