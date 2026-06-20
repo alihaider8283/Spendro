@@ -1,436 +1,616 @@
-import { AuthTextInput } from '@/components/auth-text-input';
-import { AuthToggle } from '@/components/auth-toggle';
-import { Button } from '@/components/button';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  useColorScheme,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { Colors, Spacing } from '@/constants/theme';
 import { useAuthStore } from '@/store/authStore';
 import { validateEmail, validatePassword } from '@/utils/validation';
-import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, useColorScheme } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+
+const PRIMARY = '#3369F6';
 
 export default function AuthScreen() {
-    const scheme = useColorScheme();
-    const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
-    const { login, signup, isLoading } = useAuthStore();
-    const router = useRouter();
+  const scheme = useColorScheme();
+  const theme = scheme === 'dark' ? 'dark' : 'light';
+  const colors = Colors[theme];
+  const router = useRouter();
 
-    const [activeTab, setActiveTab] = useState<'login' | 'signup'>('login');
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [fullName, setFullName] = useState('');
-    const [showPassword, setShowPassword] = useState(false);
-    const [agreeToTerms, setAgreeToTerms] = useState(false);
-    const [error, setError] = useState('');
+  const { login, signup, loginWithGoogle, isLoading } = useAuthStore();
 
-    // Field-specific validation errors
-    const [emailError, setEmailError] = useState('');
-    const [passwordError, setPasswordError] = useState('');
-    const [fullNameError, setFullNameError] = useState('');
+  const [activeTab, setActiveTab] = useState<'login' | 'signup'>('login');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [agreeToTerms, setAgreeToTerms] = useState(false);
+  const [error, setError] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [fullNameError, setFullNameError] = useState('');
+  const [googleLoading, setGoogleLoading] = useState(false);
 
-    const handleTabChange = (tab: 'login' | 'signup') => {
-        setActiveTab(tab);
-        setEmailError('');
-        setPasswordError('');
-        setFullNameError('');
-        setError('');
-    };
+  const handleTabChange = (tab: 'login' | 'signup') => {
+    setActiveTab(tab);
+    setError('');
+    setEmailError('');
+    setPasswordError('');
+    setFullNameError('');
+  };
 
-    const handleLogin = async () => {
-        try {
-            setError('');
-            setEmailError('');
-            setPasswordError('');
+  const handleLogin = async () => {
+    setError('');
+    setEmailError('');
+    setPasswordError('');
+    let hasError = false;
+    if (!email.trim()) { setEmailError('Email is required'); hasError = true; }
+    else if (!validateEmail(email)) { setEmailError('Enter a valid email address'); hasError = true; }
+    if (!password) { setPasswordError('Password is required'); hasError = true; }
+    if (hasError) return;
+    try {
+      await login(email.trim(), password);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Login failed. Please try again.');
+    }
+  };
 
-            let hasError = false;
+  const handleSignup = async () => {
+    setError('');
+    setFullNameError('');
+    setEmailError('');
+    setPasswordError('');
+    let hasError = false;
+    if (!fullName.trim()) { setFullNameError('Full name is required'); hasError = true; }
+    else if (fullName.trim().length < 2) { setFullNameError('Name must be at least 2 characters'); hasError = true; }
+    if (!email.trim()) { setEmailError('Email is required'); hasError = true; }
+    else if (!validateEmail(email)) { setEmailError('Enter a valid email address'); hasError = true; }
+    if (!password) { setPasswordError('Password is required'); hasError = true; }
+    else if (!validatePassword(password)) { setPasswordError('Password must be at least 8 characters'); hasError = true; }
+    if (!agreeToTerms) { setError('Please agree to the Terms & Conditions to continue'); hasError = true; }
+    if (hasError) return;
+    try {
+      await signup(email.trim(), password, fullName.trim());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Sign up failed. Please try again.');
+    }
+  };
 
-            if (!email.trim()) {
-                setEmailError('Email is required');
-                hasError = true;
-            } else if (!validateEmail(email)) {
-                setEmailError('Please enter a valid email address');
-                hasError = true;
-            }
+  const handleGoogleSignIn = async () => {
+    try {
+      setError('');
+      setGoogleLoading(true);
+      await loginWithGoogle();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Google sign-in failed';
+      if (!msg.toLowerCase().includes('cancel')) {
+        setError(msg);
+      }
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
 
-            if (!password) {
-                setPasswordError('Password is required');
-                hasError = true;
-            }
+  const inputBg = colors.backgroundElement;
+  const inputBorder = colors.backgroundSelected;
 
-            if (hasError) {
-                return;
-            }
+  return (
+    <SafeAreaView style={[styles.screen, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* ── Top bar ── */}
+          <View style={styles.topBar}>
+            <View style={styles.brandRow}>
+              <View style={[styles.brandIcon, { backgroundColor: PRIMARY }]}>
+                <Ionicons name="sparkles-outline" size={16} color="#FFF" />
+              </View>
+              <ThemedText style={styles.brandText}>Spendro</ThemedText>
+            </View>
+            <Pressable
+              onPress={() => router.replace('/(tabs)')}
+              hitSlop={12}
+              style={[styles.closeBtn, { backgroundColor: colors.backgroundElement }]}
+              accessibilityRole="button"
+              accessibilityLabel="Close"
+            >
+              <Ionicons name="close" size={18} color={colors.text} />
+            </Pressable>
+          </View>
 
-            await login(email.trim(), password);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Login failed');
-        }
-    };
+          {/* ── Hero ── */}
+          <View style={styles.hero}>
+            <ThemedText style={styles.heroTitle}>
+              {activeTab === 'login' ? 'Welcome back' : 'Create account'}
+            </ThemedText>
+            <ThemedText style={[styles.heroSub, { color: colors.textSecondary }]}>
+              {activeTab === 'login'
+                ? 'Sign in to access your expenses and budgets'
+                : 'Start tracking your spending with Spendro'}
+            </ThemedText>
+          </View>
 
-    const handleSignup = async () => {
-        try {
-            setError('');
-            setFullNameError('');
-            setEmailError('');
-            setPasswordError('');
-
-            let hasError = false;
-
-            if (!fullName.trim()) {
-                setFullNameError('Full name is required');
-                hasError = true;
-            } else if (fullName.trim().length < 2) {
-                setFullNameError('Name must be at least 2 characters');
-                hasError = true;
-            }
-
-            if (!email.trim()) {
-                setEmailError('Email is required');
-                hasError = true;
-            } else if (!validateEmail(email)) {
-                setEmailError('Please enter a valid email address');
-                hasError = true;
-            }
-
-            if (!password) {
-                setPasswordError('Password is required');
-                hasError = true;
-            } else if (!validatePassword(password)) {
-                setPasswordError('Password must be at least 8 characters');
-                hasError = true;
-            }
-
-            if (!agreeToTerms) {
-                setError('Please agree to terms and conditions');
-                hasError = true;
-            }
-
-            if (hasError) {
-                return;
-            }
-
-            await signup(email.trim(), password, fullName.trim());
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Signup failed');
-        }
-    };
-
-    return (
-        <SafeAreaView style={[styles.screen, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
-            <ThemedView style={styles.topBar}>
-                <Pressable
-                    onPress={() => router.replace('/(tabs)')}
-                    style={({ pressed }) => [
-                        styles.closeButton,
-                        pressed && { backgroundColor: colors.backgroundSelected }
-                    ]}
-                    hitSlop={12}
-                    accessibilityRole="button"
-                    accessibilityLabel="Close authentication"
+          {/* ── Pill tab switcher ── */}
+          <View style={[styles.tabPill, { backgroundColor: colors.backgroundElement }]}>
+            {(['login', 'signup'] as const).map((tab) => (
+              <Pressable
+                key={tab}
+                onPress={() => handleTabChange(tab)}
+                style={[
+                  styles.tabSegment,
+                  activeTab === tab && [
+                    styles.tabSegmentActive,
+                    { backgroundColor: colors.background },
+                  ],
+                ]}
+              >
+                <ThemedText
+                  style={[
+                    styles.tabLabel,
+                    { color: activeTab === tab ? colors.text : colors.textSecondary },
+                    activeTab === tab && styles.tabLabelActive,
+                  ]}
                 >
-                    <Ionicons name="close-outline" size={24} color={colors.text} />
-                </Pressable>
-            </ThemedView>
-            <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-                {/* Header */}
-                <ThemedView style={styles.headerContainer}>
-                    <ThemedView style={[styles.logo, { backgroundColor: '#208AEF' }]}>
-                        <Ionicons name="star" size={48} color="#ffffff" />
-                    </ThemedView>
-                    <ThemedText type="title" style={styles.appTitle}>
-                        Spendro
-                    </ThemedText>
-                    <ThemedText type="small" themeColor="textSecondary">
-                        {activeTab === 'login' ? 'Smart Expense Tracker AI' : 'Start tracking smarter with Spendro'}
-                    </ThemedText>
-                </ThemedView>
+                  {tab === 'login' ? 'Log In' : 'Sign Up'}
+                </ThemedText>
+              </Pressable>
+            ))}
+          </View>
 
-                {/* Toggle Tabs */}
-                <AuthToggle activeTab={activeTab} onTabChange={handleTabChange} />
+          {/* ── Error banner ── */}
+          {!!error && (
+            <View style={[styles.errorBanner, { backgroundColor: theme === 'dark' ? '#2d1414' : '#fef2f2' }]}>
+              <Ionicons name="alert-circle-outline" size={16} color="#EF4444" style={{ marginRight: 8 }} />
+              <ThemedText style={styles.errorText}>{error}</ThemedText>
+            </View>
+          )}
 
-                {/* Error Message */}
-                {error ? (
-                    <ThemedView style={[styles.errorContainer, { backgroundColor: colors.backgroundElement }]}>
-                        <ThemedText style={[styles.errorText, { color: '#EF4444' }]}>
-                            {error}
-                        </ThemedText>
-                    </ThemedView>
-                ) : null}
-
-                {/* Login Form */}
-                {activeTab === 'login' && (
-                    <>
-                        <AuthTextInput
-                            label="Email"
-                            iconName="mail-outline"
-                            placeholder="you@email.com"
-                            value={email}
-                            onChangeText={(text) => {
-                                setEmail(text);
-                                if (emailError) setEmailError('');
-                            }}
-                            keyboardType="email-address"
-                            autoCapitalize="none"
-                            error={emailError}
-                        />
-
-                        <AuthTextInput
-                            label="Password"
-                            iconName="lock-closed-outline"
-                            placeholder="Enter password"
-                            value={password}
-                            onChangeText={(text) => {
-                                setPassword(text);
-                                if (passwordError) setPasswordError('');
-                            }}
-                            secureTextEntry={!showPassword}
-                            showPasswordToggle
-                            showPassword={showPassword}
-                            onTogglePassword={() => setShowPassword(!showPassword)}
-                            error={passwordError}
-                        />
-
-                        {/* Forgot Password */}
-                        <Pressable style={styles.forgotPasswordContainer}>
-                            <ThemedText style={styles.forgotPasswordText}>Forgot Password?</ThemedText>
-                        </Pressable>
-
-                        {/* Login Button */}
-                        <Button
-                            title="Log In"
-                            onPress={handleLogin}
-                            isLoading={isLoading}
-                            style={{ marginBottom: 24 }}
-                        />
-                    </>
-                )}
-
-                {/* Signup Form */}
-                {activeTab === 'signup' && (
-                    <>
-                        <AuthTextInput
-                            label="Full Name"
-                            iconName="person-outline"
-                            placeholder="John Doe"
-                            value={fullName}
-                            onChangeText={(text) => {
-                                setFullName(text);
-                                if (fullNameError) setFullNameError('');
-                            }}
-                            autoCapitalize="words"
-                            error={fullNameError}
-                        />
-
-                        <AuthTextInput
-                            label="Email"
-                            iconName="mail-outline"
-                            placeholder="you@email.com"
-                            value={email}
-                            onChangeText={(text) => {
-                                setEmail(text);
-                                if (emailError) setEmailError('');
-                            }}
-                            keyboardType="email-address"
-                            autoCapitalize="none"
-                            error={emailError}
-                        />
-
-                        <AuthTextInput
-                            label="Password"
-                            iconName="lock-closed-outline"
-                            placeholder="Create a password"
-                            value={password}
-                            onChangeText={(text) => {
-                                setPassword(text);
-                                if (passwordError) setPasswordError('');
-                            }}
-                            secureTextEntry={!showPassword}
-                            showPasswordToggle
-                            showPassword={showPassword}
-                            onTogglePassword={() => setShowPassword(!showPassword)}
-                            helperText="Must be at least 8 characters"
-                            error={passwordError}
-                        />
-
-                        {/* Terms Checkbox */}
-                        <ThemedView style={styles.checkboxContainer}>
-                            <Pressable
-                                onPress={() => setAgreeToTerms(!agreeToTerms)}
-                                style={[
-                                    styles.checkbox,
-                                    { backgroundColor: agreeToTerms ? '#208AEF' : colors.backgroundElement },
-                                ]}
-                            >
-                                {agreeToTerms && <Ionicons name="checkmark" size={16} color="#fff" />}
-                            </Pressable>
-                            <ThemedText type="small">
-                                I agree to the{' '}
-                                <ThemedText type="smallBold" style={styles.link}>
-                                    Terms & Conditions
-                                </ThemedText>
-                            </ThemedText>
-                        </ThemedView>
-
-                        {/* Signup Button */}
-                        <Button
-                            title="Sign Up"
-                            onPress={handleSignup}
-                            isLoading={isLoading}
-                            style={{ marginBottom: 24 }}
-                        />
-                    </>
-                )}
-
-                {/* Divider */}
-                <ThemedView style={styles.dividerContainer}>
-                    <ThemedView style={[styles.divider, { backgroundColor: colors.backgroundElement }]} />
-                    <ThemedText type="small" themeColor="textSecondary" style={styles.dividerText}>
-                        or continue with
-                    </ThemedText>
-                    <ThemedView style={[styles.divider, { backgroundColor: colors.backgroundElement }]} />
-                </ThemedView>
-
-                {/* Social Buttons */}
-                <Button
-                    title="🔍 Continue with Google"
-                    variant="outline"
-                    style={{ marginBottom: 12 }}
+          {/* ── Form ── */}
+          {activeTab === 'login' ? (
+            <View style={styles.form}>
+              {/* Email */}
+              <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>Email</ThemedText>
+              <View style={[styles.inputRow, { backgroundColor: inputBg, borderColor: emailError ? '#EF4444' : inputBorder }]}>
+                <Ionicons name="mail-outline" size={18} color={colors.textSecondary} />
+                <TextInput
+                  style={[styles.textInput, { color: colors.text }]}
+                  placeholder="you@email.com"
+                  placeholderTextColor={colors.textSecondary}
+                  value={email}
+                  onChangeText={(t) => { setEmail(t); if (emailError) setEmailError(''); }}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
                 />
+              </View>
+              {!!emailError && <ThemedText style={styles.fieldError}>{emailError}</ThemedText>}
 
-                <Button
-                    title="🍎 Continue with Apple"
-                    variant="outline"
-                    style={{ marginBottom: 12 }}
+              {/* Password */}
+              <ThemedText style={[styles.inputLabel, { color: colors.textSecondary, marginTop: Spacing.three }]}>Password</ThemedText>
+              <View style={[styles.inputRow, { backgroundColor: inputBg, borderColor: passwordError ? '#EF4444' : inputBorder }]}>
+                <Ionicons name="lock-closed-outline" size={18} color={colors.textSecondary} />
+                <TextInput
+                  style={[styles.textInput, { color: colors.text }]}
+                  placeholder="Enter your password"
+                  placeholderTextColor={colors.textSecondary}
+                  value={password}
+                  onChangeText={(t) => { setPassword(t); if (passwordError) setPasswordError(''); }}
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
                 />
-
-                <Pressable
-                    onPress={() => router.replace('/(tabs)')}
-                    style={styles.guestLinkContainer}
-                    accessibilityRole="button"
-                >
-                    <ThemedText style={styles.guestLinkText}>
-                        Continue as Guest
-                    </ThemedText>
+                <Pressable onPress={() => setShowPassword(!showPassword)} hitSlop={8}>
+                  <Ionicons
+                    name={showPassword ? 'eye-outline' : 'eye-off-outline'}
+                    size={18}
+                    color={colors.textSecondary}
+                  />
                 </Pressable>
-            </ScrollView>
-        </SafeAreaView>
-    );
+              </View>
+              {!!passwordError && <ThemedText style={styles.fieldError}>{passwordError}</ThemedText>}
+
+              {/* Forgot */}
+              <Pressable style={styles.forgotRow}>
+                <ThemedText style={[styles.forgotText, { color: PRIMARY }]}>Forgot password?</ThemedText>
+              </Pressable>
+
+              {/* Submit */}
+              <Pressable
+                onPress={handleLogin}
+                disabled={isLoading}
+                style={({ pressed }) => [
+                  styles.primaryBtn,
+                  { backgroundColor: PRIMARY },
+                  (pressed || isLoading) && { opacity: 0.75 },
+                ]}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="#FFF" />
+                ) : (
+                  <ThemedText style={styles.primaryBtnText}>Log In</ThemedText>
+                )}
+              </Pressable>
+            </View>
+          ) : (
+            <View style={styles.form}>
+              {/* Full Name */}
+              <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>Full Name</ThemedText>
+              <View style={[styles.inputRow, { backgroundColor: inputBg, borderColor: fullNameError ? '#EF4444' : inputBorder }]}>
+                <Ionicons name="person-outline" size={18} color={colors.textSecondary} />
+                <TextInput
+                  style={[styles.textInput, { color: colors.text }]}
+                  placeholder="John Doe"
+                  placeholderTextColor={colors.textSecondary}
+                  value={fullName}
+                  onChangeText={(t) => { setFullName(t); if (fullNameError) setFullNameError(''); }}
+                  autoCapitalize="words"
+                />
+              </View>
+              {!!fullNameError && <ThemedText style={styles.fieldError}>{fullNameError}</ThemedText>}
+
+              {/* Email */}
+              <ThemedText style={[styles.inputLabel, { color: colors.textSecondary, marginTop: Spacing.three }]}>Email</ThemedText>
+              <View style={[styles.inputRow, { backgroundColor: inputBg, borderColor: emailError ? '#EF4444' : inputBorder }]}>
+                <Ionicons name="mail-outline" size={18} color={colors.textSecondary} />
+                <TextInput
+                  style={[styles.textInput, { color: colors.text }]}
+                  placeholder="you@email.com"
+                  placeholderTextColor={colors.textSecondary}
+                  value={email}
+                  onChangeText={(t) => { setEmail(t); if (emailError) setEmailError(''); }}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+              {!!emailError && <ThemedText style={styles.fieldError}>{emailError}</ThemedText>}
+
+              {/* Password */}
+              <ThemedText style={[styles.inputLabel, { color: colors.textSecondary, marginTop: Spacing.three }]}>Password</ThemedText>
+              <View style={[styles.inputRow, { backgroundColor: inputBg, borderColor: passwordError ? '#EF4444' : inputBorder }]}>
+                <Ionicons name="lock-closed-outline" size={18} color={colors.textSecondary} />
+                <TextInput
+                  style={[styles.textInput, { color: colors.text }]}
+                  placeholder="Create a password (8+ chars)"
+                  placeholderTextColor={colors.textSecondary}
+                  value={password}
+                  onChangeText={(t) => { setPassword(t); if (passwordError) setPasswordError(''); }}
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                />
+                <Pressable onPress={() => setShowPassword(!showPassword)} hitSlop={8}>
+                  <Ionicons
+                    name={showPassword ? 'eye-outline' : 'eye-off-outline'}
+                    size={18}
+                    color={colors.textSecondary}
+                  />
+                </Pressable>
+              </View>
+              {!!passwordError && <ThemedText style={styles.fieldError}>{passwordError}</ThemedText>}
+
+              {/* Terms */}
+              <Pressable
+                onPress={() => setAgreeToTerms(!agreeToTerms)}
+                style={styles.termsRow}
+              >
+                <View style={[
+                  styles.checkbox,
+                  { backgroundColor: agreeToTerms ? PRIMARY : inputBg, borderColor: agreeToTerms ? PRIMARY : inputBorder },
+                ]}>
+                  {agreeToTerms && <Ionicons name="checkmark" size={13} color="#FFF" />}
+                </View>
+                <ThemedText style={[styles.termsText, { color: colors.textSecondary }]}>
+                  I agree to the{' '}
+                  <ThemedText style={{ color: PRIMARY, fontWeight: '600' }}>
+                    Terms & Conditions
+                  </ThemedText>
+                </ThemedText>
+              </Pressable>
+
+              {/* Submit */}
+              <Pressable
+                onPress={handleSignup}
+                disabled={isLoading}
+                style={({ pressed }) => [
+                  styles.primaryBtn,
+                  { backgroundColor: PRIMARY },
+                  (pressed || isLoading) && { opacity: 0.75 },
+                ]}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="#FFF" />
+                ) : (
+                  <ThemedText style={styles.primaryBtnText}>Create Account</ThemedText>
+                )}
+              </Pressable>
+            </View>
+          )}
+
+          {/* ── Divider ── */}
+          <View style={styles.dividerRow}>
+            <View style={[styles.dividerLine, { backgroundColor: colors.backgroundElement }]} />
+            <ThemedText style={[styles.dividerLabel, { color: colors.textSecondary }]}>
+              or continue with
+            </ThemedText>
+            <View style={[styles.dividerLine, { backgroundColor: colors.backgroundElement }]} />
+          </View>
+
+          {/* ── Google button ── */}
+          <Pressable
+            onPress={handleGoogleSignIn}
+            disabled={googleLoading || isLoading}
+            style={({ pressed }) => [
+              styles.socialBtn,
+              {
+                backgroundColor: colors.backgroundElement,
+                borderColor: colors.backgroundSelected,
+              },
+              (pressed || googleLoading) && { opacity: 0.75 },
+            ]}
+          >
+            {googleLoading ? (
+              <ActivityIndicator color={colors.text} size="small" />
+            ) : (
+              <>
+                <Ionicons name="logo-google" size={20} color="#EA4335" />
+                <ThemedText style={styles.socialBtnText}>Continue with Google</ThemedText>
+              </>
+            )}
+          </Pressable>
+
+          {/* ── Guest link ── */}
+          <Pressable
+            onPress={() => router.replace('/(tabs)')}
+            style={styles.guestRow}
+            accessibilityRole="button"
+          >
+            <ThemedText style={[styles.guestText, { color: colors.textSecondary }]}>
+              Continue as Guest
+            </ThemedText>
+            <Ionicons name="arrow-forward" size={14} color={colors.textSecondary} style={{ marginLeft: 4 }} />
+          </Pressable>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
 }
 
 const styles = StyleSheet.create({
-    screen: {
-        flex: 1,
-    },
-    content: {
-        paddingHorizontal: Spacing.four,
-        paddingTop: Spacing.four,
-        paddingBottom: Spacing.six,
-    },
-    headerContainer: {
-        alignItems: 'center',
-        marginBottom: 32,
-    },
-    logo: {
-        width: 80,
-        height: 80,
-        borderRadius: 20,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 16,
-    },
-    appTitle: {
-        marginBottom: 8,
-    },
-    errorContainer: {
-        padding: 12,
-        borderRadius: 8,
-        marginBottom: 16,
-    },
-    errorText: {
-        fontSize: 14,
-        fontWeight: '500',
-    },
-    forgotPasswordContainer: {
-        marginBottom: 24,
-    },
-    forgotPasswordText: {
-        color: '#208AEF',
-        fontSize: 14,
-        fontWeight: '500',
-    },
-    primaryButton: {
-        paddingVertical: 14,
-        borderRadius: 8,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 24,
-    },
-    primaryButtonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    dividerContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 20,
-        gap: 12,
-    },
-    divider: {
-        flex: 1,
-        height: 1,
-    },
-    dividerText: {
-        fontWeight: '500',
-    },
-    socialButton: {
-        paddingVertical: 12,
-        borderRadius: 8,
-        borderWidth: 1,
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    checkboxContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 24,
-        gap: 8,
-    },
-    checkbox: {
-        width: 20,
-        height: 20,
-        borderRadius: 4,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    link: {
-        color: '#208AEF',
-    },
-    topBar: {
-        flexDirection: 'row',
-        justifyContent: 'flex-end',
-        paddingHorizontal: Spacing.four,
-        paddingTop: Spacing.two,
-        backgroundColor: 'transparent',
-    },
-    closeButton: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    guestLinkContainer: {
-        alignItems: 'center',
-        marginTop: 16,
-        paddingVertical: 12,
-    },
-    guestLinkText: {
-        color: '#208AEF',
-        fontSize: 15,
-        fontWeight: '600',
-    },
+  screen: { flex: 1 },
+  flex: { flex: 1 },
+  scroll: {
+    paddingHorizontal: Spacing.four,
+    paddingBottom: Spacing.six,
+  },
+
+  // Top bar
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: Spacing.three,
+    marginBottom: Spacing.four,
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  brandIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  brandText: {
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+  closeBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Hero
+  hero: {
+    marginBottom: Spacing.four,
+  },
+  heroTitle: {
+    fontSize: 30,
+    fontWeight: '800',
+    letterSpacing: -0.6,
+    marginBottom: Spacing.one,
+  },
+  heroSub: {
+    fontSize: 15,
+    lineHeight: 22,
+  },
+
+  // Pill tab switcher
+  tabPill: {
+    flexDirection: 'row',
+    borderRadius: 16,
+    padding: 4,
+    marginBottom: Spacing.four,
+  },
+  tabSegment: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 13,
+    alignItems: 'center',
+  },
+  tabSegmentActive: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  tabLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  tabLabelActive: {
+    fontWeight: '700',
+  },
+
+  // Error
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: 10,
+    marginBottom: Spacing.three,
+  },
+  errorText: {
+    color: '#EF4444',
+    fontSize: 13,
+    flex: 1,
+    fontWeight: '500',
+  },
+
+  // Form
+  form: {
+    marginBottom: Spacing.three,
+  },
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+    marginBottom: 6,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: Spacing.three,
+    height: 52,
+  },
+  textInput: {
+    flex: 1,
+    fontSize: 15,
+  },
+  fieldError: {
+    color: '#EF4444',
+    fontSize: 12,
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  forgotRow: {
+    alignSelf: 'flex-end',
+    paddingVertical: Spacing.two,
+    marginBottom: Spacing.two,
+  },
+  forgotText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  termsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: Spacing.three,
+    marginBottom: Spacing.three,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  termsText: {
+    fontSize: 13,
+    flex: 1,
+    lineHeight: 18,
+  },
+
+  // Primary CTA
+  primaryBtn: {
+    height: 54,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#3369F6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.28,
+    shadowRadius: 10,
+    elevation: 5,
+    marginTop: 4,
+  },
+  primaryBtnText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+
+  // Divider
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: Spacing.three,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+  },
+  dividerLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+
+  // Social
+  socialBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    height: 52,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: Spacing.three,
+  },
+  socialBtnText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+
+  // Guest
+  guestRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.three,
+    marginTop: Spacing.one,
+  },
+  guestText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
 });

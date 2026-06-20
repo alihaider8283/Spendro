@@ -57,10 +57,21 @@ export const triggerSync = async (): Promise<void> => {
     if (deletedTransactions.length > 0) {
       console.log(`[SyncEngine] Deleting ${deletedTransactions.length} transactions from Firestore...`);
       const deletedTxIds = deletedTransactions.map((t) => t.id);
-      await firestoreBackupService.deleteTransactionsBatch(userId, deletedTxIds);
-      // Hard delete from SQLite after successful Firestore deletion
-      for (const id of deletedTxIds) {
-        await transactionRepository.hardDelete(id);
+      try {
+        await firestoreBackupService.deleteTransactionsBatch(userId, deletedTxIds);
+        for (const id of deletedTxIds) {
+          await transactionRepository.hardDelete(id);
+        }
+      } catch (batchErr) {
+        console.warn('[SyncEngine] Batch transaction delete failed, falling back to individual deletes:', batchErr);
+        for (const id of deletedTxIds) {
+          try {
+            await firestoreBackupService.deleteTransactionsBatch(userId, [id]);
+            await transactionRepository.hardDelete(id);
+          } catch (singleErr) {
+            console.error(`[SyncEngine] Failed to delete transaction ${id}, will retry next cycle:`, singleErr);
+          }
+        }
       }
     }
 
@@ -72,10 +83,21 @@ export const triggerSync = async (): Promise<void> => {
     if (deletedBudgets.length > 0) {
       console.log(`[SyncEngine] Deleting ${deletedBudgets.length} budgets from Firestore...`);
       const deletedBgIds = deletedBudgets.map((b) => b.id);
-      await firestoreBackupService.deleteBudgetsBatch(userId, deletedBgIds);
-      // Hard delete from SQLite after successful Firestore deletion
-      for (const id of deletedBgIds) {
-        await budgetRepository.hardDelete(id);
+      try {
+        await firestoreBackupService.deleteBudgetsBatch(userId, deletedBgIds);
+        for (const id of deletedBgIds) {
+          await budgetRepository.hardDelete(id);
+        }
+      } catch (batchErr) {
+        console.warn('[SyncEngine] Batch budget delete failed, falling back to individual deletes:', batchErr);
+        for (const id of deletedBgIds) {
+          try {
+            await firestoreBackupService.deleteBudgetsBatch(userId, [id]);
+            await budgetRepository.hardDelete(id);
+          } catch (singleErr) {
+            console.error(`[SyncEngine] Failed to delete budget ${id}, will retry next cycle:`, singleErr);
+          }
+        }
       }
     }
 
@@ -125,13 +147,27 @@ export const triggerSync = async (): Promise<void> => {
 
     if (transactionsToUpload.length > 0) {
       console.log(`[SyncEngine] Uploading ${transactionsToUpload.length} pending transactions to Firestore...`);
-      await firestoreBackupService.uploadTransactionsBatch(userId, transactionsToUpload);
-      // Mark successfully uploaded records as synced
-      for (const tx of transactionsToUpload) {
-        await database.runAsync(
-          `UPDATE transactions SET syncStatus = 'synced' WHERE id = ?`,
-          [tx.id]
-        );
+      try {
+        await firestoreBackupService.uploadTransactionsBatch(userId, transactionsToUpload);
+        for (const tx of transactionsToUpload) {
+          await database.runAsync(
+            `UPDATE transactions SET syncStatus = 'synced' WHERE id = ?`,
+            [tx.id]
+          );
+        }
+      } catch (batchErr) {
+        console.warn('[SyncEngine] Batch transaction upload failed, falling back to individual uploads:', batchErr);
+        for (const tx of transactionsToUpload) {
+          try {
+            await firestoreBackupService.uploadTransactionsBatch(userId, [tx]);
+            await database.runAsync(
+              `UPDATE transactions SET syncStatus = 'synced' WHERE id = ?`,
+              [tx.id]
+            );
+          } catch (singleErr) {
+            console.error(`[SyncEngine] Failed to sync transaction ${tx.id}, will retry next cycle:`, singleErr);
+          }
+        }
       }
     }
 
@@ -165,12 +201,27 @@ export const triggerSync = async (): Promise<void> => {
 
     if (budgetsToUpload.length > 0) {
       console.log(`[SyncEngine] Uploading ${budgetsToUpload.length} pending budgets to Firestore...`);
-      await firestoreBackupService.uploadBudgetsBatch(userId, budgetsToUpload);
-      for (const bg of budgetsToUpload) {
-        await database.runAsync(
-          `UPDATE budgets SET syncStatus = 'synced' WHERE id = ?`,
-          [bg.id]
-        );
+      try {
+        await firestoreBackupService.uploadBudgetsBatch(userId, budgetsToUpload);
+        for (const bg of budgetsToUpload) {
+          await database.runAsync(
+            `UPDATE budgets SET syncStatus = 'synced' WHERE id = ?`,
+            [bg.id]
+          );
+        }
+      } catch (batchErr) {
+        console.warn('[SyncEngine] Batch budget upload failed, falling back to individual uploads:', batchErr);
+        for (const bg of budgetsToUpload) {
+          try {
+            await firestoreBackupService.uploadBudgetsBatch(userId, [bg]);
+            await database.runAsync(
+              `UPDATE budgets SET syncStatus = 'synced' WHERE id = ?`,
+              [bg.id]
+            );
+          } catch (singleErr) {
+            console.error(`[SyncEngine] Failed to sync budget ${bg.id}, will retry next cycle:`, singleErr);
+          }
+        }
       }
     }
 

@@ -9,6 +9,8 @@ export interface AuthState {
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<void>;
   logout: () => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
+  updateName: (name: string) => Promise<void>;
   initializeAuth: () => Promise<void>;
 }
 
@@ -49,6 +51,24 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ isLoading: false });
       throw error;
     }
+  },
+
+  loginWithGoogle: async () => {
+    try {
+      set({ isLoading: true });
+      await authService.signInWithGoogle();
+      // auth state updates automatically via onAuthStateChanged listener
+    } catch (error) {
+      set({ isLoading: false });
+      throw error;
+    }
+  },
+
+  updateName: async (name: string) => {
+    await authService.updateDisplayName(name);
+    set((state) => ({
+      user: state.user ? { ...state.user, name } : null,
+    }));
   },
 
   initializeAuth: async () => {

@@ -1,13 +1,16 @@
 import {
+  GoogleAuthProvider,
   createUserWithEmailAndPassword,
   getAuth,
   onAuthStateChanged,
+  signInWithCredential,
   signInWithEmailAndPassword,
   signOut,
   updateProfile,
   type FirebaseAuthTypes,
 } from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
+import { GoogleSignin, isSuccessResponse } from '@react-native-google-signin/google-signin';
 
 export const authService = {
   /**
@@ -64,6 +67,35 @@ export const authService = {
   logout: async (): Promise<void> => {
     const auth = getAuth();
     await signOut(auth);
+  },
+
+  /**
+   * Sign in with Google using Firebase credential
+   */
+  signInWithGoogle: async (): Promise<FirebaseAuthTypes.User> => {
+    GoogleSignin.configure({
+      webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? '',
+    });
+    await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+    const response = await GoogleSignin.signIn();
+    if (!isSuccessResponse(response)) {
+      throw new Error('Google sign-in was cancelled');
+    }
+    const { idToken } = response.data;
+    if (!idToken) throw new Error('No Google ID token received');
+    const credential = GoogleAuthProvider.credential(idToken);
+    const result = await signInWithCredential(getAuth(), credential);
+    return result.user;
+  },
+
+  /**
+   * Update the display name of the currently authenticated user
+   */
+  updateDisplayName: async (name: string): Promise<void> => {
+    const auth = getAuth();
+    const user = auth.currentUser;
+    if (!user) throw new Error('No authenticated user');
+    await updateProfile(user, { displayName: name });
   },
 
   /**

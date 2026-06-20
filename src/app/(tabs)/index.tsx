@@ -3,23 +3,62 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { FAB } from '@/components/floating-action-button';
 import { Colors, Spacing } from '@/constants/theme';
+import { getCurrencySymbol } from '@/features/expenses/types';
+import { useStats, useTransactions } from '@/hooks/useTransactions';
+import { useBudgetsForMonth } from '@/hooks/useBudgets';
 import { useAuthStore } from '@/store/authStore';
+import { useSettingsStore } from '@/store/settingsStore';
 import { useRouter } from 'expo-router';
 
-const recentTransactions = [
-  { id: '1', title: 'Starbucks', amount: '-$6.40', subtitle: 'Coffee' },
-  { id: '2', title: 'Whole Foods', amount: '-$82.15', subtitle: 'Groceries · AI categorized' },
-  { id: '3', title: 'Uber', amount: '-$18.90', subtitle: 'Transport · AI categorized' },
-];
+function getCurrentMonthStr(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function getLastMonthStr(): string {
+  const now = new Date();
+  now.setMonth(now.getMonth() - 1);
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
 
 export default function HomeScreen() {
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
   const { user, isAuthenticated } = useAuthStore();
+  const { currency } = useSettingsStore();
   const router = useRouter();
 
+  const currentMonth = getCurrentMonthStr();
+  const lastMonth = getLastMonthStr();
+
+  const { data: transactions = [] } = useTransactions();
+  const { data: stats = [] } = useStats();
+  const { data: budgets = [] } = useBudgetsForMonth(currentMonth);
+
+  const currencySymbol = getCurrencySymbol(currency);
+
+  const currentStats = stats.find(s => s.month === currentMonth);
+  const lastStats = stats.find(s => s.month === lastMonth);
+
+  const totalSpent = currentStats?.expense ?? 0;
+  const totalBudget = budgets.reduce((sum, b) => sum + b.amount, 0);
+  const remaining = Math.max(0, totalBudget - totalSpent);
+  const budgetPercent = totalBudget > 0 ? Math.min(1, totalSpent / totalBudget) : 0;
+  const budgetPercentDisplay = Math.round(budgetPercent * 100);
+
+  const lastExpense = lastStats?.expense ?? 0;
+  const vsLastMonth =
+    lastExpense > 0 ? Math.round(((totalSpent - lastExpense) / lastExpense) * 100) : null;
+
+  const recentTransactions = transactions.slice(0, 5);
+
+  const formatAmount = (amount: number, type: string) => {
+    const prefix = type === 'income' ? '+' : '-';
+    return `${prefix}${currencySymbol}${amount.toFixed(2)}`;
+  };
+
   return (
-    <SafeAreaView style={[styles.screen, { backgroundColor: colors.background }]}>      
+    <SafeAreaView style={[styles.screen, { backgroundColor: colors.background }]}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View>
@@ -30,33 +69,43 @@ export default function HomeScreen() {
               {isAuthenticated ? (user?.name || 'User') : 'Guest'}
             </Text>
           </View>
-          <Pressable 
+          <Pressable
             onPress={() => !isAuthenticated && router.push('/(auth)/auth')}
             style={({ pressed }) => [
-              styles.avatar, 
+              styles.avatar,
               { backgroundColor: colors.backgroundElement },
-              pressed && !isAuthenticated && { opacity: 0.7 }
+              pressed && !isAuthenticated && { opacity: 0.7 },
             ]}
             accessibilityRole={!isAuthenticated ? 'button' : undefined}
             accessibilityLabel={!isAuthenticated ? 'Log in or sign up' : undefined}
-          > 
+          >
             <Text style={[styles.avatarText, { color: colors.text }]}>
               {isAuthenticated ? (user?.name?.[0] || 'U').toUpperCase() : 'G'}
             </Text>
           </Pressable>
         </View>
 
-        <View style={[styles.card, { backgroundColor: '#3369F6' }]}> 
+        <View style={[styles.card, { backgroundColor: '#3369F6' }]}>
           <Text style={styles.cardLabel}>Total spent this month</Text>
-          <Text style={styles.cardAmount}>$2,847.50</Text>
+          <Text style={styles.cardAmount}>
+            {currencySymbol}{totalSpent.toFixed(2)}
+          </Text>
           <View style={styles.cardRow}>
             <View style={styles.badge}>
-              <Text style={styles.badgeText}>+12% vs last month</Text>
+              <Text style={styles.badgeText}>
+                {vsLastMonth !== null
+                  ? `${vsLastMonth >= 0 ? '+' : ''}${vsLastMonth}% vs last month`
+                  : 'No previous data'}
+              </Text>
             </View>
-            <Text style={styles.cardSubText}>Budget $3,500</Text>
+            {totalBudget > 0 && (
+              <Text style={styles.cardSubText}>
+                Budget {currencySymbol}{totalBudget.toFixed(0)}
+              </Text>
+            )}
           </View>
           <View style={styles.progressBar}>
-            <View style={styles.progressFill} />
+            <View style={[styles.progressFill, { width: `${budgetPercentDisplay}%` }]} />
           </View>
         </View>
 
@@ -72,43 +121,72 @@ export default function HomeScreen() {
           </Pressable>
         </View>
 
-        <View style={[styles.alertCard, { backgroundColor: colors.backgroundElement }]}> 
-          <Text style={[styles.alertTitle, { color: colors.text }]}>Budget Alert</Text>
-          <Text style={[styles.alertBody, { color: colors.textSecondary }]}>{"You've used 81% of your monthly budget. $652 remaining."}</Text>
-        </View>
+        {totalBudget > 0 && budgetPercent >= 0.8 && (
+          <View style={[styles.alertCard, { backgroundColor: colors.backgroundElement }]}>
+            <Text style={[styles.alertTitle, { color: colors.text }]}>Budget Alert</Text>
+            <Text style={[styles.alertBody, { color: colors.textSecondary }]}>
+              {`You've used ${budgetPercentDisplay}% of your monthly budget. ${currencySymbol}${remaining.toFixed(0)} remaining.`}
+            </Text>
+          </View>
+        )}
 
-        <View style={[styles.sectionCard, { backgroundColor: colors.backgroundElement }]}> 
+        <View style={[styles.sectionCard, { backgroundColor: colors.backgroundElement }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Spending Overview</Text>
-          <View style={[styles.chartPlaceholder, { backgroundColor: colors.background }]}> 
+          <View style={[styles.chartPlaceholder, { backgroundColor: colors.background }]}>
             <Text style={[styles.chartLabel, { color: colors.textSecondary }]}>Last 6 months</Text>
           </View>
         </View>
 
         {/* AI Insights (disabled for current phase)
-        <View style={[styles.sectionCard, { backgroundColor: colors.backgroundElement }]}> 
+        <View style={[styles.sectionCard, { backgroundColor: colors.backgroundElement }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>AI Insights</Text>
           <Text style={[styles.bodyText, { color: colors.textSecondary }]}>Dining out increased 24% this month. Predicted total: $3,180 by month end.</Text>
           <Text style={[styles.bodyText, { color: colors.textSecondary, marginTop: Spacing.two }]}>Cutting subscriptions could save you $48/mo.</Text>
         </View>
         */}
 
-        <View style={[styles.sectionCard, { backgroundColor: colors.backgroundElement }]}> 
+        <View style={[styles.sectionCard, { backgroundColor: colors.backgroundElement }]}>
           <View style={styles.transactionsHeader}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent Transactions</Text>
-            <Text style={[styles.linkText, { color: '#3369F6' }]}>See all</Text>
+            <Pressable onPress={() => router.push('/(tabs)/transactions' as any)}>
+              <Text style={[styles.linkText, { color: '#3369F6' }]}>See all</Text>
+            </Pressable>
           </View>
-          {recentTransactions.map((item) => (
-            <View key={item.id} style={styles.transactionRow}>
-              <View style={[styles.transactionIcon, { backgroundColor: colors.background }]}> 
-                <Text style={{ color: '#3369F6' }}>{item.title[0]}</Text>
-              </View>
-              <View style={styles.transactionText}>
-                <Text style={[styles.transactionTitle, { color: colors.text }]}>{item.title}</Text>
-                <Text style={[styles.transactionSubtitle, { color: colors.textSecondary }]}>{item.subtitle}</Text>
-              </View>
-              <Text style={[styles.transactionAmount, { color: colors.text }]}>{item.amount}</Text>
-            </View>
-          ))}
+          {recentTransactions.length === 0 ? (
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+              No transactions yet
+            </Text>
+          ) : (
+            recentTransactions.map((item) => (
+              <Pressable
+                key={item.id}
+                style={styles.transactionRow}
+                onPress={() => router.push(`/expense/${item.id}`)}
+              >
+                <View style={[styles.transactionIcon, { backgroundColor: colors.background }]}>
+                  <Text style={{ color: '#3369F6' }}>
+                    {(item.title || item.category || '?')[0].toUpperCase()}
+                  </Text>
+                </View>
+                <View style={styles.transactionText}>
+                  <Text style={[styles.transactionTitle, { color: colors.text }]}>
+                    {item.title || item.category}
+                  </Text>
+                  <Text style={[styles.transactionSubtitle, { color: colors.textSecondary }]}>
+                    {item.category}
+                  </Text>
+                </View>
+                <Text
+                  style={[
+                    styles.transactionAmount,
+                    { color: item.type === 'income' ? '#137333' : colors.text },
+                  ]}
+                >
+                  {formatAmount(item.amount, item.type)}
+                </Text>
+              </Pressable>
+            ))
+          )}
         </View>
       </ScrollView>
       <FAB />
@@ -193,7 +271,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   progressFill: {
-    width: '82%',
     height: '100%',
     backgroundColor: '#ffffff',
   },
@@ -259,6 +336,11 @@ const styles = StyleSheet.create({
   linkText: {
     fontSize: 14,
     fontWeight: '700',
+  },
+  emptyText: {
+    fontSize: 14,
+    textAlign: 'center',
+    paddingVertical: Spacing.three,
   },
   transactionRow: {
     flexDirection: 'row',

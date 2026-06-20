@@ -9,6 +9,7 @@ import { useSettingsStore } from '@/store/settingsStore';
 import * as Clarity from '@microsoft/react-native-clarity';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { DarkTheme, DefaultTheme, Redirect, Stack, ThemeProvider, type ErrorBoundaryProps } from 'expo-router';
+import { setStatusBarStyle } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -37,6 +38,10 @@ export default function RootLayout() {
   const theme = scheme === 'dark' ? 'dark' : 'light';
   const colors = Colors[theme];
   const primaryColor = '#208AEF';
+
+  useEffect(() => {
+    setStatusBarStyle(scheme === 'dark' ? 'light' : 'dark', true);
+  }, [scheme]);
 
   const { isAuthenticated, initializeAuth } = useAuthStore();
   const { loadSettings } = useSettingsStore();

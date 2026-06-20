@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { ThemedText } from '@/components/themed-text';
 import { Colors, Spacing } from '@/constants/theme';
 import { triggerSync } from '@/services/syncEngine';
@@ -7,15 +8,29 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import {
   Alert,
+  FlatList,
+  KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Switch,
+  TextInput,
   useColorScheme,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+const CURRENCIES = [
+  { code: 'USD', name: 'US Dollar',         symbol: '$'  },
+  { code: 'EUR', name: 'Euro',              symbol: '€'  },
+  { code: 'GBP', name: 'British Pound',     symbol: '£'  },
+  { code: 'INR', name: 'Indian Rupee',      symbol: '₹'  },
+  { code: 'JPY', name: 'Japanese Yen',      symbol: '¥'  },
+  { code: 'AUD', name: 'Australian Dollar', symbol: 'A$' },
+  { code: 'PKR', name: 'Pakistan Rupee',    symbol: '₨'  },
+];
 
 export default function SettingsScreen() {
   const scheme = useColorScheme();
@@ -25,7 +40,7 @@ export default function SettingsScreen() {
   const router = useRouter();
 
   // Auth Store details
-  const { user, logout, isAuthenticated } = useAuthStore();
+  const { user, logout, isAuthenticated, updateName } = useAuthStore();
 
   // Settings Store details
   const {
@@ -40,6 +55,28 @@ export default function SettingsScreen() {
     setCurrency,
     setCloudBackup,
   } = useSettingsStore();
+
+  // Modal state
+  const [showCurrencyModal, setShowCurrencyModal] = useState(false);
+  const [showEditProfile, setShowEditProfile] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+
+  const activeCurrency = CURRENCIES.find((c) => c.code === currency) ?? CURRENCIES[0];
+
+  const handleSaveName = async () => {
+    const trimmed = editName.trim();
+    if (!trimmed || editSaving) return;
+    setEditSaving(true);
+    try {
+      await updateName(trimmed);
+      setShowEditProfile(false);
+    } catch {
+      Alert.alert('Error', 'Could not update your name. Please try again.');
+    } finally {
+      setEditSaving(false);
+    }
+  };
 
   // Generate initials for the profile picture placeholder
   const getInitials = (name?: string) => {
@@ -100,6 +137,9 @@ export default function SettingsScreen() {
           onPress={() => {
             if (!isAuthenticated) {
               router.push('/(auth)/auth');
+            } else {
+              setEditName(user?.name ?? '');
+              setShowEditProfile(true);
             }
           }}
           style={[styles.profileCard, { backgroundColor: colors.backgroundElement }]}
@@ -136,29 +176,6 @@ export default function SettingsScreen() {
           <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
         </Pressable>
 
-        {/* ACCOUNT SECTION */}
-        <View style={styles.sectionContainer}>
-          <ThemedText style={[styles.sectionHeader, { color: colors.textSecondary }]}>
-            ACCOUNT
-          </ThemedText>
-          <View style={[styles.listContainer, { backgroundColor: colors.backgroundElement }]}>
-            {/* Personal Information */}
-            <Pressable
-              style={({ pressed }) => [styles.listItem, pressed && { backgroundColor: colors.backgroundSelected }]}
-            >
-              <View style={styles.listItemLeft}>
-                <View style={[styles.itemIconContainer, { backgroundColor: colors.background }]}>
-                  <Ionicons name="person-outline" size={20} color={colors.textSecondary} />
-                </View>
-                <ThemedText style={styles.listItemText}>Personal Information</ThemedText>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
-            </Pressable>
-
-            <View style={[styles.divider, { backgroundColor: colors.background }]} />
-
-          </View>
-        </View>
 
         {/* PREFERENCES SECTION */}
         <View style={styles.sectionContainer}>
@@ -241,6 +258,7 @@ export default function SettingsScreen() {
 
             {/* Currency */}
             <Pressable
+              onPress={() => setShowCurrencyModal(true)}
               style={({ pressed }) => [styles.listItem, pressed && { backgroundColor: colors.backgroundSelected }]}
             >
               <View style={styles.listItemLeft}>
@@ -251,7 +269,7 @@ export default function SettingsScreen() {
               </View>
               <View style={styles.listItemRight}>
                 <ThemedText style={[styles.badgeText, { color: colors.textSecondary }]}>
-                  {currency} ($)
+                  {currency} ({activeCurrency.symbol})
                 </ThemedText>
                 <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
               </View>
@@ -389,6 +407,162 @@ export default function SettingsScreen() {
           </Pressable>
         )}
       </ScrollView>
+
+      {/* ── Currency Picker Modal ── */}
+      <Modal
+        visible={showCurrencyModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCurrencyModal(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setShowCurrencyModal(false)} />
+        <View style={[styles.modalSheet, { backgroundColor: colors.background }]}>
+          {/* Handle */}
+          <View style={[styles.modalHandle, { backgroundColor: colors.backgroundElement }]} />
+
+          {/* Header */}
+          <View style={styles.modalHeader}>
+            <ThemedText style={styles.modalTitle}>Currency</ThemedText>
+            <Pressable
+              onPress={() => setShowCurrencyModal(false)}
+              style={[styles.modalCloseBtn, { backgroundColor: colors.backgroundElement }]}
+              hitSlop={8}
+            >
+              <Ionicons name="close" size={18} color={colors.text} />
+            </Pressable>
+          </View>
+
+          <FlatList
+            data={CURRENCIES}
+            keyExtractor={(item) => item.code}
+            numColumns={2}
+            columnWrapperStyle={styles.currencyRow}
+            contentContainerStyle={styles.currencyGrid}
+            showsVerticalScrollIndicator={false}
+            renderItem={({ item }) => {
+              const active = item.code === currency;
+              return (
+                <Pressable
+                  onPress={() => {
+                    setCurrency(item.code);
+                    setShowCurrencyModal(false);
+                  }}
+                  style={({ pressed }) => [
+                    styles.currencyCard,
+                    { backgroundColor: active ? primaryColor : colors.backgroundElement },
+                    pressed && !active && { opacity: 0.75 },
+                  ]}
+                >
+                  <ThemedText style={[styles.currencySymbol, { color: active ? '#FFF' : colors.text }]}>
+                    {item.symbol}
+                  </ThemedText>
+                  <ThemedText style={[styles.currencyCode, { color: active ? '#FFF' : colors.text }]}>
+                    {item.code}
+                  </ThemedText>
+                  <ThemedText style={[styles.currencyName, { color: active ? 'rgba(255,255,255,0.7)' : colors.textSecondary }]}>
+                    {item.name}
+                  </ThemedText>
+                  {active && (
+                    <View style={styles.currencyCheck}>
+                      <Ionicons name="checkmark" size={11} color={primaryColor} />
+                    </View>
+                  )}
+                </Pressable>
+              );
+            }}
+          />
+        </View>
+      </Modal>
+
+      {/* ── Edit Profile Modal ── */}
+      <Modal
+        visible={showEditProfile}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowEditProfile(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlayFull}
+        >
+          <Pressable style={styles.modalOverlay} onPress={() => setShowEditProfile(false)} />
+          <View style={[styles.modalSheet, { backgroundColor: colors.background }]}>
+            {/* Handle */}
+            <View style={[styles.modalHandle, { backgroundColor: colors.backgroundElement }]} />
+
+            {/* Header */}
+            <View style={styles.modalHeader}>
+              <ThemedText style={styles.modalTitle}>Edit Profile</ThemedText>
+              <Pressable
+                onPress={() => setShowEditProfile(false)}
+                style={[styles.modalCloseBtn, { backgroundColor: colors.backgroundElement }]}
+                hitSlop={8}
+              >
+                <Ionicons name="close" size={18} color={colors.text} />
+              </Pressable>
+            </View>
+
+            {/* Avatar preview */}
+            <View style={styles.editAvatarRow}>
+              <View style={[styles.editAvatar, { backgroundColor: primaryColor }]}>
+                <ThemedText style={styles.editAvatarText}>
+                  {editName.trim().charAt(0).toUpperCase() || 'S'}
+                </ThemedText>
+              </View>
+            </View>
+
+            {/* Name input */}
+            <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>
+              Display Name
+            </ThemedText>
+            <TextInput
+              value={editName}
+              onChangeText={setEditName}
+              placeholder="Your name"
+              placeholderTextColor={colors.textSecondary}
+              autoCapitalize="words"
+              returnKeyType="done"
+              onSubmitEditing={handleSaveName}
+              style={[
+                styles.editInput,
+                {
+                  backgroundColor: colors.backgroundElement,
+                  color: colors.text,
+                  borderColor: colors.backgroundSelected,
+                },
+              ]}
+            />
+
+            {/* Email (read-only) */}
+            <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>
+              Email
+            </ThemedText>
+            <View style={[styles.editInputReadOnly, { backgroundColor: colors.backgroundElement, borderColor: colors.backgroundSelected }]}>
+              <ThemedText style={{ color: colors.textSecondary, fontSize: 15 }}>
+                {user?.email ?? ''}
+              </ThemedText>
+            </View>
+            <ThemedText style={[styles.editNote, { color: colors.textSecondary }]}>
+              Email cannot be changed here.
+            </ThemedText>
+
+            {/* Save */}
+            <Pressable
+              onPress={handleSaveName}
+              disabled={editSaving || !editName.trim()}
+              style={({ pressed }) => [
+                styles.editSaveBtn,
+                { backgroundColor: primaryColor },
+                (pressed || editSaving || !editName.trim()) && { opacity: 0.6 },
+              ]}
+            >
+              <ThemedText style={styles.editSaveBtnText}>
+                {editSaving ? 'Saving…' : 'Save Changes'}
+              </ThemedText>
+            </Pressable>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -596,6 +770,144 @@ const styles = StyleSheet.create({
   },
   logoutText: {
     color: '#EF4444',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+
+  // ── Shared modal ──
+  modalOverlayFull: {
+    flex: 1,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  modalSheet: {
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: Spacing.four,
+    paddingBottom: Spacing.six,
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginTop: 12,
+    marginBottom: Spacing.three,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: Spacing.four,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+  modalCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // ── Currency modal ──
+  currencyGrid: {
+    paddingBottom: Spacing.three,
+  },
+  currencyRow: {
+    gap: Spacing.two,
+    marginBottom: Spacing.two,
+  },
+  currencyCard: {
+    flex: 1,
+    borderRadius: 18,
+    padding: Spacing.three,
+    minHeight: 100,
+    justifyContent: 'flex-end',
+    position: 'relative',
+  },
+  currencySymbol: {
+    fontSize: 28,
+    fontWeight: '800',
+    marginBottom: 2,
+  },
+  currencyCode: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  currencyName: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  currencyCheck: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#FFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // ── Edit profile modal ──
+  editAvatarRow: {
+    alignItems: 'center',
+    marginBottom: Spacing.four,
+  },
+  editAvatar: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editAvatarText: {
+    color: '#FFF',
+    fontSize: 28,
+    fontWeight: '800',
+  },
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+    marginBottom: 6,
+  },
+  editInput: {
+    height: 50,
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: Spacing.three,
+    fontSize: 15,
+    marginBottom: Spacing.three,
+  },
+  editInputReadOnly: {
+    height: 50,
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: Spacing.three,
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  editNote: {
+    fontSize: 12,
+    marginBottom: Spacing.four,
+  },
+  editSaveBtn: {
+    height: 52,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: Spacing.two,
+  },
+  editSaveBtnText: {
+    color: '#FFF',
     fontSize: 16,
     fontWeight: '700',
   },
