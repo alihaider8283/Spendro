@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, Pressable, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useTheme } from '@/hooks/use-theme';
 
 interface FABProps {
   onPress?: () => void;
@@ -10,6 +11,7 @@ interface FABProps {
 
 export function FAB({ onPress, style }: FABProps) {
   const router = useRouter();
+  const theme = useTheme();
 
   const handlePress = () => {
     if (onPress) {
@@ -23,6 +25,7 @@ export function FAB({ onPress, style }: FABProps) {
     <Pressable
       style={({ pressed }) => [
         styles.fab,
+        { backgroundColor: theme.primary },
         pressed && styles.pressed,
         style,
       ]}
@@ -43,7 +46,6 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#3369F6',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',

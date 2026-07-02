@@ -38,7 +38,7 @@ export default function TabsLayout() {
   const scheme = useColorScheme();
   const theme = scheme === 'dark' ? 'dark' : 'light';
   const colors = Colors[theme];
-  const primaryColor = '#208AEF';
+  const primaryColor = colors.primary;
   const inactiveTabColor = '#73717D';
 
   return (

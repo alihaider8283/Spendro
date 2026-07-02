@@ -62,7 +62,7 @@ export function PaymentMethodPanel({ selectedId, onSelect, onClose }: PaymentMet
                   styles.cell,
                   {
                     backgroundColor: isDark ? colors.backgroundElement : '#F8F9FC',
-                    borderColor: isSelected ? '#3369F6' : 'transparent',
+                    borderColor: isSelected ? colors.primary : 'transparent',
                   },
                   pressed && styles.cellPressed,
                 ]}
@@ -74,13 +74,13 @@ export function PaymentMethodPanel({ selectedId, onSelect, onClose }: PaymentMet
                 <View
                   style={[
                     styles.iconWrap,
-                    { backgroundColor: isSelected ? '#3369F6' : isDark ? colors.background : '#E8F0FE' },
+                    { backgroundColor: isSelected ? colors.primary : isDark ? colors.background : '#E8F0FE' },
                   ]}
                 >
                   <Ionicons
                     name={method.icon}
                     size={20}
-                    color={isSelected ? '#ffffff' : '#3369F6'}
+                    color={isSelected ? '#ffffff' : colors.primary}
                   />
                 </View>
 
@@ -88,7 +88,7 @@ export function PaymentMethodPanel({ selectedId, onSelect, onClose }: PaymentMet
                 <Text
                   style={[
                     styles.cellLabel,
-                    { color: isSelected ? '#3369F6' : colors.text },
+                    { color: isSelected ? colors.primary : colors.text },
                     isSelected && styles.cellLabelSelected,
                   ]}
                   numberOfLines={1}
@@ -98,7 +98,7 @@ export function PaymentMethodPanel({ selectedId, onSelect, onClose }: PaymentMet
 
                 {/* Checkmark badge */}
                 {isSelected && (
-                  <View style={styles.checkBadge}>
+                  <View style={[styles.checkBadge, { backgroundColor: colors.primary }]}>
                     <Ionicons name="checkmark" size={9} color="#fff" />
                   </View>
                 )}

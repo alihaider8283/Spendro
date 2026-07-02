@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { getCategoryByNameOrId, getCurrencySymbol } from '@/features/expenses/types';
+import { Category, EXPENSE_CATEGORIES, getCategoryByNameOrId, getCurrencySymbol } from '@/features/expenses/types';
 import { useBudgets } from '@/hooks/useBudgets';
 import { budgetRepository } from '@/services/budgetRepository';
 import { useSettingsStore } from '@/store/settingsStore';
@@ -109,6 +109,26 @@ export default function BudgetSetup({ onDone, onBack }: BudgetSetupProps) {
     [rows]
   );
 
+  const availableCategories = useMemo(
+    () => EXPENSE_CATEGORIES.filter(c => !rows.some(r => r.id === c.id)),
+    [rows]
+  );
+
+  const addCategoryRow = (cat: Category) => {
+    setRows(prev => [
+      ...prev,
+      {
+        id: cat.id,
+        label: cat.label,
+        icon: cat.icon,
+        color: cat.color,
+        bgLight: cat.bgLight,
+        bgDark: cat.bgDark,
+        amount: '',
+      },
+    ]);
+  };
+
   const updateAmount = (idx: number, val: string) => {
     const raw = val.replace(/[^0-9.]/g, '');
     setRows(prev => prev.map((r, i) => i === idx ? { ...r, amount: raw } : r));
@@ -198,7 +218,8 @@ export default function BudgetSetup({ onDone, onBack }: BudgetSetupProps) {
           {/* Step indicator */}
           <View style={styles.stepRow}>
             <View style={[styles.stepDot, { backgroundColor: theme.backgroundElement }]} />
-            <View style={[styles.stepDot, { backgroundColor: '#3369F6', width: 24 }]} />
+            <View style={[styles.stepDot, { backgroundColor: theme.backgroundElement }]} />
+            <View style={[styles.stepDot, { backgroundColor: theme.primary, width: 24 }]} />
           </View>
         </View>
 
@@ -216,7 +237,7 @@ export default function BudgetSetup({ onDone, onBack }: BudgetSetupProps) {
           </View>
 
           {/* Total card */}
-          <View style={[styles.totalCard, { backgroundColor: '#3369F6' }]}>
+          <View style={[styles.totalCard, { backgroundColor: theme.primary }]}>
             <View style={styles.totalDecor1} />
             <View style={styles.totalDecor2} />
             <ThemedText style={styles.totalLabel}>TOTAL MONTHLY BUDGET</ThemedText>
@@ -286,6 +307,33 @@ export default function BudgetSetup({ onDone, onBack }: BudgetSetupProps) {
             </View>
           ))}
 
+          {/* Add from existing categories */}
+          {availableCategories.length > 0 && (
+            <>
+              <ThemedText style={[styles.sectionLabel, { color: theme.textSecondary, marginTop: Spacing.two }]}>
+                ADD FROM CATEGORIES
+              </ThemedText>
+              <View style={styles.chipGrid}>
+                {availableCategories.map(cat => (
+                  <Pressable
+                    key={cat.id}
+                    onPress={() => addCategoryRow(cat)}
+                    style={({ pressed }) => [
+                      styles.chip,
+                      { backgroundColor: theme.backgroundElement },
+                      pressed && { opacity: 0.7 },
+                    ]}
+                  >
+                    <Ionicons name={cat.icon} size={15} color={cat.color} />
+                    <ThemedText style={styles.chipLabel} numberOfLines={1}>
+                      {cat.label}
+                    </ThemedText>
+                  </Pressable>
+                ))}
+              </View>
+            </>
+          )}
+
           {/* Add category */}
           <Pressable
             onPress={() => setShowModal(true)}
@@ -298,8 +346,8 @@ export default function BudgetSetup({ onDone, onBack }: BudgetSetupProps) {
               pressed && { opacity: 0.7 },
             ]}
           >
-            <Ionicons name="add-circle-outline" size={20} color="#3369F6" />
-            <ThemedText style={[styles.addBtnText, { color: '#3369F6' }]}>
+            <Ionicons name="add-circle-outline" size={20} color={theme.primary} />
+            <ThemedText style={[styles.addBtnText, { color: theme.primary }]}>
               Add Category
             </ThemedText>
           </Pressable>
@@ -310,7 +358,7 @@ export default function BudgetSetup({ onDone, onBack }: BudgetSetupProps) {
             disabled={saving}
             style={({ pressed }) => [
               styles.startBtn,
-              { backgroundColor: '#3369F6' },
+              { backgroundColor: theme.primary },
               (pressed || saving) && { opacity: 0.8 },
             ]}
           >
@@ -348,7 +396,7 @@ export default function BudgetSetup({ onDone, onBack }: BudgetSetupProps) {
               onPress={handleAddCustom}
               style={({ pressed }) => [pressed && { opacity: 0.6 }]}
             >
-              <ThemedText style={[styles.modalDone, { color: '#3369F6', opacity: customLabel.trim() ? 1 : 0.4 }]}>
+              <ThemedText style={[styles.modalDone, { color: theme.primary, opacity: customLabel.trim() ? 1 : 0.4 }]}>
                 Add
               </ThemedText>
             </Pressable>
@@ -585,6 +633,26 @@ const styles = StyleSheet.create({
   },
   deleteBtn: {
     padding: Spacing.one,
+  },
+
+  // Category chip grid
+  chipGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
+    marginBottom: Spacing.three,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: 999,
+    paddingVertical: Spacing.one + 2,
+    paddingHorizontal: Spacing.three,
+  },
+  chipLabel: {
+    fontSize: 13,
+    fontWeight: '600',
   },
 
   // Add button

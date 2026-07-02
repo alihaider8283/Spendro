@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ThemedText } from '@/components/themed-text';
 import { Colors, Spacing } from '@/constants/theme';
+import { CURRENCIES, getCurrencySymbol } from '@/features/expenses/types';
 import { triggerSync } from '@/services/syncEngine';
 import { useAuthStore } from '@/store/authStore';
 import { useSettingsStore } from '@/store/settingsStore';
@@ -22,21 +23,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const CURRENCIES = [
-  { code: 'USD', name: 'US Dollar',         symbol: '$'  },
-  { code: 'EUR', name: 'Euro',              symbol: '€'  },
-  { code: 'GBP', name: 'British Pound',     symbol: '£'  },
-  { code: 'INR', name: 'Indian Rupee',      symbol: '₹'  },
-  { code: 'JPY', name: 'Japanese Yen',      symbol: '¥'  },
-  { code: 'AUD', name: 'Australian Dollar', symbol: 'A$' },
-  { code: 'PKR', name: 'Pakistan Rupee',    symbol: '₨'  },
-];
-
 export default function SettingsScreen() {
   const scheme = useColorScheme();
   const theme = scheme === 'dark' ? 'dark' : 'light';
   const colors = Colors[theme];
-  const primaryColor = '#3369F6';
+  const primaryColor = colors.primary;
   const router = useRouter();
 
   // Auth Store details
@@ -49,11 +40,13 @@ export default function SettingsScreen() {
     notifications,
     currency,
     cloudBackup,
+    monthlyIncome,
     setThemeMode,
     setAiAutoCategorization,
     setNotifications,
     setCurrency,
     setCloudBackup,
+    setMonthlyIncome,
   } = useSettingsStore();
 
   // Modal state
@@ -61,8 +54,20 @@ export default function SettingsScreen() {
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [editName, setEditName] = useState('');
   const [editSaving, setEditSaving] = useState(false);
+  const [showIncomeModal, setShowIncomeModal] = useState(false);
+  const [editIncome, setEditIncome] = useState('');
 
   const activeCurrency = CURRENCIES.find((c) => c.code === currency) ?? CURRENCIES[0];
+
+  const openIncomeModal = () => {
+    setEditIncome(monthlyIncome > 0 ? String(monthlyIncome) : '');
+    setShowIncomeModal(true);
+  };
+
+  const handleSaveIncome = () => {
+    setMonthlyIncome(parseFloat(editIncome) || 0);
+    setShowIncomeModal(false);
+  };
 
   const handleSaveName = async () => {
     const trimmed = editName.trim();
@@ -159,8 +164,8 @@ export default function SettingsScreen() {
             </ThemedText>
             {isAuthenticated ? (
               <View style={[styles.premiumBadge, { backgroundColor: theme === 'dark' ? '#1A2F4C' : '#EBF3FF' }]}>
-                <Ionicons name="sparkles" size={12} color={theme === 'dark' ? '#3A96FF' : '#3369F6'} style={styles.premiumIcon} />
-                <ThemedText style={[styles.premiumText, { color: theme === 'dark' ? '#3A96FF' : '#3369F6' }]}>
+                <Ionicons name="sparkles" size={12} color={theme === 'dark' ? '#3A96FF' : colors.primary} style={styles.premiumIcon} />
+                <ThemedText style={[styles.premiumText, { color: theme === 'dark' ? '#3A96FF' : colors.primary }]}>
                   Premium
                 </ThemedText>
               </View>
@@ -270,6 +275,29 @@ export default function SettingsScreen() {
               <View style={styles.listItemRight}>
                 <ThemedText style={[styles.badgeText, { color: colors.textSecondary }]}>
                   {currency} ({activeCurrency.symbol})
+                </ThemedText>
+                <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+              </View>
+            </Pressable>
+
+            <View style={[styles.divider, { backgroundColor: colors.background }]} />
+
+            {/* Monthly Income */}
+            <Pressable
+              onPress={openIncomeModal}
+              style={({ pressed }) => [styles.listItem, pressed && { backgroundColor: colors.backgroundSelected }]}
+            >
+              <View style={styles.listItemLeft}>
+                <View style={[styles.itemIconContainer, { backgroundColor: colors.background }]}>
+                  <Ionicons name="trending-up-outline" size={20} color={colors.textSecondary} />
+                </View>
+                <ThemedText style={styles.listItemText}>Monthly Income</ThemedText>
+              </View>
+              <View style={styles.listItemRight}>
+                <ThemedText style={[styles.badgeText, { color: colors.textSecondary }]}>
+                  {monthlyIncome > 0
+                    ? `${getCurrencySymbol(currency)}${monthlyIncome.toLocaleString()}`
+                    : 'Not set'}
                 </ThemedText>
                 <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
               </View>
@@ -472,6 +500,67 @@ export default function SettingsScreen() {
             }}
           />
         </View>
+      </Modal>
+
+      {/* ── Monthly Income Modal ── */}
+      <Modal
+        visible={showIncomeModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowIncomeModal(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlayFull}
+        >
+          <Pressable style={styles.modalOverlay} onPress={() => setShowIncomeModal(false)} />
+          <View style={[styles.modalSheet, { backgroundColor: colors.background }]}>
+            <View style={[styles.modalHandle, { backgroundColor: colors.backgroundElement }]} />
+
+            <View style={styles.modalHeader}>
+              <ThemedText style={styles.modalTitle}>Monthly Income</ThemedText>
+              <Pressable
+                onPress={() => setShowIncomeModal(false)}
+                style={[styles.modalCloseBtn, { backgroundColor: colors.backgroundElement }]}
+                hitSlop={8}
+              >
+                <Ionicons name="close" size={18} color={colors.text} />
+              </Pressable>
+            </View>
+
+            <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>
+              Expected income per month
+            </ThemedText>
+            <TextInput
+              value={editIncome}
+              onChangeText={(val) => setEditIncome(val.replace(/[^0-9.]/g, ''))}
+              placeholder="0"
+              placeholderTextColor={colors.textSecondary}
+              keyboardType="decimal-pad"
+              returnKeyType="done"
+              onSubmitEditing={handleSaveIncome}
+              style={[
+                styles.editInput,
+                {
+                  backgroundColor: colors.backgroundElement,
+                  color: colors.text,
+                  borderColor: colors.backgroundSelected,
+                },
+              ]}
+            />
+
+            <Pressable
+              onPress={handleSaveIncome}
+              style={({ pressed }) => [
+                styles.editSaveBtn,
+                { backgroundColor: primaryColor },
+                pressed && { opacity: 0.6 },
+              ]}
+            >
+              <ThemedText style={styles.editSaveBtnText}>Save</ThemedText>
+            </Pressable>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* ── Edit Profile Modal ── */}

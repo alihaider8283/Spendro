@@ -9,11 +9,13 @@ export interface SettingsState {
   notifications: boolean;
   currency: string;
   cloudBackup: boolean;
+  monthlyIncome: number;
   setThemeMode: (mode: 'light' | 'dark' | 'system') => void;
   setAiAutoCategorization: (enabled: boolean) => void;
   setNotifications: (enabled: boolean) => void;
   setCurrency: (currency: string) => void;
   setCloudBackup: (enabled: boolean) => void;
+  setMonthlyIncome: (income: number) => void;
   loadSettings: () => Promise<void>;
 }
 
@@ -25,6 +27,7 @@ export const useSettingsStore = create<SettingsState>()(
       notifications: true,
       currency: 'USD',
       cloudBackup: false,
+      monthlyIncome: 0,
 
       setThemeMode: (mode) => {
         set({ themeMode: mode });
@@ -49,6 +52,10 @@ export const useSettingsStore = create<SettingsState>()(
 
       setCloudBackup: (enabled) => {
         set({ cloudBackup: enabled });
+      },
+
+      setMonthlyIncome: (income) => {
+        set({ monthlyIncome: income });
       },
 
       loadSettings: async () => {

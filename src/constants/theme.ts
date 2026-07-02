@@ -13,8 +13,8 @@ export const Colors = {
     background: '#ffffff',
     backgroundElement: '#F0F0F3',
     backgroundSelected: '#E0E1E6',
-    primary: '#208AEF',
-    card: '#208AEF',
+    primary: '#3369F6',
+    card: '#3369F6',
     textSecondary: '#60646C',
   },
   dark: {
@@ -22,8 +22,8 @@ export const Colors = {
     background: '#000000',
     backgroundElement: '#212225',
     backgroundSelected: '#2E3135',
-    primary: '#1A6FD6',
-    card: '#1A6FD6',
+    primary: '#4F7FF7',
+    card: '#4F7FF7',
     textSecondary: '#B0B4BA',
   },
 } as const;

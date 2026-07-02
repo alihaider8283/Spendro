@@ -52,7 +52,7 @@ export function CalendarView({
               style={[
                 styles.calendarCell,
                 !item.dayNumber && styles.calendarCellEmpty,
-                isSelected && { backgroundColor: '#3369F6' },
+                isSelected && { backgroundColor: theme.primary },
               ]}
               disabled={!item.dayNumber}
               onPress={() => item.dateString && setSelectedCalendarDate(item.dateString)}

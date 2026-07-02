@@ -3,6 +3,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { FAB } from '@/components/floating-action-button';
 import { Colors, Spacing } from '@/constants/theme';
+import { CategoryDonutChart } from '@/features/expenses/components/category-donut-chart';
+import { IncomeExpenseTrendChart } from '@/features/expenses/components/income-expense-trend-chart';
 import { getCurrencySymbol } from '@/features/expenses/types';
 import { useStats, useTransactions } from '@/hooks/useTransactions';
 import { useBudgetsForMonth } from '@/hooks/useBudgets';
@@ -85,7 +87,7 @@ export default function HomeScreen() {
           </Pressable>
         </View>
 
-        <View style={[styles.card, { backgroundColor: '#3369F6' }]}>
+        <View style={[styles.card, { backgroundColor: colors.primary }]}>
           <Text style={styles.cardLabel}>Total spent this month</Text>
           <Text style={styles.cardAmount}>
             {currencySymbol}{totalSpent.toFixed(2)}
@@ -132,9 +134,25 @@ export default function HomeScreen() {
 
         <View style={[styles.sectionCard, { backgroundColor: colors.backgroundElement }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Spending Overview</Text>
-          <View style={[styles.chartPlaceholder, { backgroundColor: colors.background }]}>
-            <Text style={[styles.chartLabel, { color: colors.textSecondary }]}>Last 6 months</Text>
-          </View>
+          <IncomeExpenseTrendChart
+            stats={stats}
+            incomeColor={colors.primary}
+            expenseColor="#D93025"
+            textColor={colors.text}
+            textSecondaryColor={colors.textSecondary}
+          />
+        </View>
+
+        <View style={[styles.sectionCard, { backgroundColor: colors.backgroundElement }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Category Breakdown</Text>
+          <CategoryDonutChart
+            transactions={transactions}
+            month={currentMonth}
+            currencySymbol={currencySymbol}
+            textColor={colors.text}
+            textSecondaryColor={colors.textSecondary}
+            surfaceColor={colors.backgroundElement}
+          />
         </View>
 
         {/* AI Insights (disabled for current phase)
@@ -149,7 +167,7 @@ export default function HomeScreen() {
           <View style={styles.transactionsHeader}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent Transactions</Text>
             <Pressable onPress={() => router.push('/(tabs)/transactions' as any)}>
-              <Text style={[styles.linkText, { color: '#3369F6' }]}>See all</Text>
+              <Text style={[styles.linkText, { color: colors.primary }]}>See all</Text>
             </Pressable>
           </View>
           {recentTransactions.length === 0 ? (
@@ -164,7 +182,7 @@ export default function HomeScreen() {
                 onPress={() => router.push(`/expense/${item.id}`)}
               >
                 <View style={[styles.transactionIcon, { backgroundColor: colors.background }]}>
-                  <Text style={{ color: '#3369F6' }}>
+                  <Text style={{ color: colors.primary }}>
                     {(item.title || item.category || '?')[0].toUpperCase()}
                   </Text>
                 </View>
@@ -312,16 +330,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '800',
     marginBottom: Spacing.three,
-  },
-  chartPlaceholder: {
-    borderRadius: 18,
-    height: 140,
-    justifyContent: 'center',
-    alignItems: 'center',
-    opacity: 0.7,
-  },
-  chartLabel: {
-    fontSize: 14,
   },
   bodyText: {
     fontSize: 15,

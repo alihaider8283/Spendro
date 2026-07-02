@@ -187,11 +187,11 @@ export default function TransactionsScreen() {
       {/* Month Navigator — below header */}
       <View style={styles.monthNavRow}>
         <Pressable onPress={handlePrevMonth} style={styles.arrowButton} accessibilityRole="button" accessibilityLabel="Previous month">
-          <Ionicons name="chevron-back" size={18} color="#208AEF" />
+          <Ionicons name="chevron-back" size={18} color={colors.primary} />
         </Pressable>
         <ThemedText style={styles.monthText}>{monthLabel}</ThemedText>
         <Pressable onPress={handleNextMonth} style={styles.arrowButton} accessibilityRole="button" accessibilityLabel="Next month">
-          <Ionicons name="chevron-forward" size={18} color="#208AEF" />
+          <Ionicons name="chevron-forward" size={18} color={colors.primary} />
         </Pressable>
       </View>
 
@@ -223,7 +223,7 @@ export default function TransactionsScreen() {
           <Pressable
             style={[
               styles.segmentButton,
-              activeTab === 'daily' && [styles.segmentButtonActive, { backgroundColor: '#3369F6' }],
+              activeTab === 'daily' && [styles.segmentButtonActive, { backgroundColor: colors.primary }],
             ]}
             onPress={() => setActiveTab('daily')}
           >
@@ -241,7 +241,7 @@ export default function TransactionsScreen() {
           <Pressable
             style={[
               styles.segmentButton,
-              activeTab === 'calendar' && [styles.segmentButtonActive, { backgroundColor: '#3369F6' }],
+              activeTab === 'calendar' && [styles.segmentButtonActive, { backgroundColor: colors.primary }],
             ]}
             onPress={() => setActiveTab('calendar')}
           >

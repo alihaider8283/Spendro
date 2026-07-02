@@ -72,7 +72,7 @@ export function PaymentMethodPicker({
               accessibilityRole="button"
               accessibilityLabel={method.label}
             >
-              <View style={[styles.methodIconWrap, { backgroundColor: isSelected ? '#3369F6' : colors.backgroundElement }]}>
+              <View style={[styles.methodIconWrap, { backgroundColor: isSelected ? colors.primary : colors.backgroundElement }]}>
                 <Ionicons
                   name={method.icon}
                   size={20}
@@ -81,7 +81,7 @@ export function PaymentMethodPicker({
               </View>
               <Text style={[styles.methodLabel, { color: colors.text }]}>{method.label}</Text>
               {isSelected && (
-                <Ionicons name="checkmark-circle" size={22} color="#3369F6" />
+                <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
               )}
             </Pressable>
           );

@@ -19,12 +19,11 @@ import { Colors, Spacing } from '@/constants/theme';
 import { useAuthStore } from '@/store/authStore';
 import { validateEmail, validatePassword } from '@/utils/validation';
 
-const PRIMARY = '#3369F6';
-
 export default function AuthScreen() {
   const scheme = useColorScheme();
   const theme = scheme === 'dark' ? 'dark' : 'light';
   const colors = Colors[theme];
+  const PRIMARY = colors.primary;
   const router = useRouter();
 
   const { login, signup, loginWithGoogle, isLoading } = useAuthStore();

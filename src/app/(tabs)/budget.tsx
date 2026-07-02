@@ -101,13 +101,13 @@ export default function BudgetScreen() {
             Budget
           </ThemedText>
           <TouchableOpacity style={styles.editLink} onPress={() => router.push('/budget-setup')} activeOpacity={0.7}>
-            <ThemedText style={styles.editText}>
+            <ThemedText style={[styles.editText, { color: colors.primary }]}>
               Edit
             </ThemedText>
           </TouchableOpacity>
         </View>
 
-        <ThemedView style={[styles.budgetCard, { backgroundColor: '#0B66E4' }]}>
+        <ThemedView style={[styles.budgetCard, { backgroundColor: colors.primary }]}>
           {/* Decorative background shapes */}
           <View style={styles.cardDecorativeContainer}>
             <View style={styles.cardDecorativeShape1} />
@@ -182,7 +182,7 @@ export default function BudgetScreen() {
         )}
 
         <TouchableOpacity
-          style={[styles.primaryButton, { backgroundColor: '#0B66E4' }]}
+          style={[styles.primaryButton, { backgroundColor: colors.primary }]}
           onPress={() => router.push('/budget-setup')}
           activeOpacity={0.8}
         >
@@ -218,14 +218,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
   },
   editText: {
-    color: '#0B66E4',
+    color: '#3369F6',
     fontSize: 14,
     fontWeight: '700',
   },
   budgetCard: {
     borderRadius: 16,
     padding: Spacing.four,
-    backgroundColor: '#0B66E4',
+    backgroundColor: '#3369F6',
     position: 'relative',
     overflow: 'hidden',
     shadowColor: '#000',
@@ -351,8 +351,8 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     height: 54,
     borderRadius: 12,
-    backgroundColor: '#0B66E4',
-    shadowColor: '#0B66E4',
+    backgroundColor: '#3369F6',
+    shadowColor: '#3369F6',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,

@@ -1,5 +1,5 @@
 import { Colors, Spacing } from '@/constants/theme';
-import { CATEGORIES, Category } from '@/features/expenses/types';
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, Category, TransactionType } from '@/features/expenses/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback } from 'react';
 import {
@@ -12,15 +12,17 @@ import {
 } from 'react-native';
 
 interface CategoryPanelProps {
+  type: TransactionType;
   selectedId: string;
   onSelect: (cat: Category) => void;
   onClose: () => void;
 }
 
-export function CategoryPanel({ selectedId, onSelect, onClose }: CategoryPanelProps) {
+export function CategoryPanel({ type, selectedId, onSelect, onClose }: CategoryPanelProps) {
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
   const isDark = scheme === 'dark';
+  const list = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
 
   const renderItem = useCallback(
     (cat: Category) => {
@@ -83,7 +85,9 @@ export function CategoryPanel({ selectedId, onSelect, onClose }: CategoryPanelPr
 
       {/* Header */}
       <View style={styles.header}>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Category</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>
+          {type === 'income' ? 'Income Category' : 'Expense Category'}
+        </Text>
         <Pressable
           onPress={onClose}
           style={({ pressed }) => [
@@ -104,7 +108,7 @@ export function CategoryPanel({ selectedId, onSelect, onClose }: CategoryPanelPr
         contentContainerStyle={styles.grid}
         keyboardShouldPersistTaps="handled"
       >
-        {CATEGORIES.map(renderItem)}
+        {list.map(renderItem)}
       </ScrollView>
     </View>
   );

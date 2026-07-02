@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { CURRENCIES, getCurrencySymbol } from '@/features/expenses/types';
 import { useTheme } from '@/hooks/use-theme';
 import { useSettingsStore } from '@/store/settingsStore';
 import BudgetSetup from './budget-setup';
@@ -13,33 +14,109 @@ interface SetupFlowProps {
   onDone?: () => void | Promise<void>;
 }
 
-const CURRENCIES = [
-  { code: 'USD', name: 'US Dollar',        symbol: '$'  },
-  { code: 'EUR', name: 'Euro',             symbol: '€'  },
-  { code: 'GBP', name: 'British Pound',    symbol: '£'  },
-  { code: 'INR', name: 'Indian Rupee',     symbol: '₹'  },
-  { code: 'JPY', name: 'Japanese Yen',     symbol: '¥'  },
-  { code: 'AUD', name: 'Australian Dollar',symbol: 'A$' },
-  { code: 'PKR', name: 'Pakistan Rupee',   symbol: '₨'  },
-];
+function StepDots({ active, theme }: { active: 1 | 2 | 3; theme: ReturnType<typeof useTheme> }) {
+  return (
+    <View style={styles.stepRow}>
+      {[1, 2, 3].map((step) => (
+        <View
+          key={step}
+          style={[
+            styles.stepDot,
+            {
+              backgroundColor: step === active ? theme.primary : theme.backgroundElement,
+              width: step === active ? 24 : 8,
+            },
+          ]}
+        />
+      ))}
+    </View>
+  );
+}
 
 export default function SetupFlow({ onDone }: SetupFlowProps) {
   const [selected, setSelected] = useState('USD');
-  const [step, setStep] = useState<1 | 2>(1);
-  const { setCurrency } = useSettingsStore();
+  const [income, setIncome] = useState('');
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const { setCurrency, setMonthlyIncome } = useSettingsStore();
   const theme = useTheme();
 
-  const handleContinue = () => {
+  const handleCurrencyContinue = () => {
     setCurrency(selected);
     setStep(2);
   };
 
-  if (step === 2) {
+  const handleIncomeContinue = () => {
+    setMonthlyIncome(parseFloat(income) || 0);
+    setStep(3);
+  };
+
+  if (step === 3) {
     return (
       <BudgetSetup
-        onBack={() => setStep(1)}
+        onBack={() => setStep(2)}
         onDone={onDone}
       />
+    );
+  }
+
+  if (step === 2) {
+    const symbol = getCurrencySymbol(selected);
+    return (
+      <ThemedView style={styles.screen}>
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={[styles.brandIcon, { backgroundColor: theme.primary }]}>
+            <Ionicons name="sparkles-outline" size={17} color="#FFF" />
+          </View>
+          <ThemedText style={styles.brandText}>Spendro</ThemedText>
+          <View style={styles.flex1} />
+          <StepDots active={2} theme={theme} />
+        </View>
+
+        {/* Title */}
+        <View style={styles.titleBlock}>
+          <ThemedText style={styles.title}>Monthly income</ThemedText>
+          <ThemedText style={[styles.subtitle, { color: theme.textSecondary }]}>
+            Optional — helps us show you a clearer picture of your budget
+          </ThemedText>
+        </View>
+
+        <View style={[styles.incomeInputWrap, { backgroundColor: theme.backgroundElement }]}>
+          <ThemedText style={styles.incomeSymbol}>{symbol}</ThemedText>
+          <TextInput
+            style={[styles.incomeInput, { color: theme.text }]}
+            value={income}
+            onChangeText={(val) => setIncome(val.replace(/[^0-9.]/g, ''))}
+            keyboardType="decimal-pad"
+            placeholder="0"
+            placeholderTextColor={theme.textSecondary}
+            returnKeyType="done"
+            autoFocus
+          />
+        </View>
+
+        <View style={styles.flex1} />
+
+        {/* Footer */}
+        <View style={[styles.footer, { borderTopColor: theme.backgroundElement }]}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.btn,
+              { backgroundColor: theme.primary },
+              pressed && { opacity: 0.85 },
+            ]}
+            onPress={handleIncomeContinue}
+          >
+            <ThemedText style={styles.btnText}>Continue</ThemedText>
+            <Ionicons name="arrow-forward" size={20} color="#FFF" />
+          </Pressable>
+          <Pressable onPress={handleIncomeContinue}>
+            <ThemedText style={[styles.note, { color: theme.textSecondary }]}>
+              Skip for now
+            </ThemedText>
+          </Pressable>
+        </View>
+      </ThemedView>
     );
   }
 
@@ -47,15 +124,12 @@ export default function SetupFlow({ onDone }: SetupFlowProps) {
     <ThemedView style={styles.screen}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={[styles.brandIcon, { backgroundColor: '#3369F6' }]}>
+        <View style={[styles.brandIcon, { backgroundColor: theme.primary }]}>
           <Ionicons name="sparkles-outline" size={17} color="#FFF" />
         </View>
         <ThemedText style={styles.brandText}>Spendro</ThemedText>
         <View style={styles.flex1} />
-        <View style={styles.stepRow}>
-          <View style={[styles.stepDot, { backgroundColor: '#3369F6', width: 24 }]} />
-          <View style={[styles.stepDot, { backgroundColor: theme.backgroundElement }]} />
-        </View>
+        <StepDots active={1} theme={theme} />
       </View>
 
       {/* Title */}
@@ -81,7 +155,7 @@ export default function SetupFlow({ onDone }: SetupFlowProps) {
               onPress={() => setSelected(item.code)}
               style={({ pressed }) => [
                 styles.card,
-                { backgroundColor: active ? '#3369F6' : theme.backgroundElement },
+                { backgroundColor: active ? theme.primary : theme.backgroundElement },
                 pressed && !active && { opacity: 0.75 },
               ]}
             >
@@ -102,7 +176,7 @@ export default function SetupFlow({ onDone }: SetupFlowProps) {
               </ThemedText>
               {active && (
                 <View style={styles.checkBadge}>
-                  <Ionicons name="checkmark" size={11} color="#3369F6" />
+                  <Ionicons name="checkmark" size={11} color={theme.primary} />
                 </View>
               )}
             </Pressable>
@@ -115,10 +189,10 @@ export default function SetupFlow({ onDone }: SetupFlowProps) {
         <Pressable
           style={({ pressed }) => [
             styles.btn,
-            { backgroundColor: '#3369F6' },
+            { backgroundColor: theme.primary },
             pressed && { opacity: 0.85 },
           ]}
-          onPress={handleContinue}
+          onPress={handleCurrencyContinue}
         >
           <ThemedText style={styles.btnText}>Continue</ThemedText>
           <Ionicons name="arrow-forward" size={20} color="#FFF" />
@@ -220,6 +294,26 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+
+  incomeInputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 20,
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.four,
+    marginBottom: Spacing.four,
+  },
+  incomeSymbol: {
+    fontSize: 32,
+    fontWeight: '800',
+    marginRight: Spacing.two,
+  },
+  incomeInput: {
+    flex: 1,
+    fontSize: 32,
+    fontWeight: '800',
+    padding: 0,
   },
 
   footer: {

@@ -37,7 +37,7 @@ export default function RootLayout() {
   const scheme = useColorScheme();
   const theme = scheme === 'dark' ? 'dark' : 'light';
   const colors = Colors[theme];
-  const primaryColor = '#208AEF';
+  const primaryColor = colors.primary;
 
   useEffect(() => {
     setStatusBarStyle(scheme === 'dark' ? 'light' : 'dark', true);

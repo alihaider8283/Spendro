@@ -27,7 +27,7 @@ export function Button({
   const isButtonDisabled = disabled || isLoading;
 
   // Primary variant colors
-  const primaryBg = '#208AEF';
+  const primaryBg = theme.primary;
   const primaryTextColor = '#ffffff';
 
   // Outline/social variant colors

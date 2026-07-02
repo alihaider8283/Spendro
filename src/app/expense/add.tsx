@@ -181,7 +181,7 @@ export default function AddExpenseScreen() {
   */
 
   const isExpense = type === 'expense';
-  const headerBg = isExpense ? '#3369F6' : '#137333';
+  const headerBg = isExpense ? colors.primary : '#137333';
   const categoryBg = isDark ? selectedCategory?.bgDark : selectedCategory?.bgLight;
 
   // ── Keypad handlers ──────────────────────────────────────────────────────
@@ -207,6 +207,12 @@ export default function AddExpenseScreen() {
       const idx = CURRENCIES.findIndex((c) => c.code === prev);
       return CURRENCIES[(idx + 1) % CURRENCIES.length].code;
     });
+  }, []);
+
+  /** Switching Expense/Income clears the category if it no longer belongs to the new type */
+  const handleTypeChange = useCallback((next: TransactionType) => {
+    setType(next);
+    setSelectedCategory((prev) => (prev && prev.type !== next ? null : prev));
   }, []);
 
   // ── Panel flow handlers ──────────────────────────────────────────────────
@@ -377,7 +383,7 @@ export default function AddExpenseScreen() {
         <View style={styles.typePills}>
           <Pressable
             style={[styles.typePill, isExpense && styles.typePillActive]}
-            onPress={() => setType('expense')}
+            onPress={() => handleTypeChange('expense')}
             accessibilityRole="button"
             accessibilityLabel="Expense"
           >
@@ -387,7 +393,7 @@ export default function AddExpenseScreen() {
           </Pressable>
           <Pressable
             style={[styles.typePill, !isExpense && styles.typePillActive]}
-            onPress={() => setType('income')}
+            onPress={() => handleTypeChange('income')}
             accessibilityRole="button"
             accessibilityLabel="Income"
           >
@@ -480,7 +486,7 @@ export default function AddExpenseScreen() {
           style={({ pressed }) => [
             styles.formRow,
             { borderBottomColor: isDark ? colors.background : '#F0F1F7' },
-            activePanel === 'payment' && [styles.formRowActive, { borderLeftColor: '#3369F6' }],
+            activePanel === 'payment' && [styles.formRowActive, { borderLeftColor: colors.primary }],
             !selectedPayment && { opacity: 0.6 },
             pressed && { opacity: 0.75 },
           ]}
@@ -497,7 +503,7 @@ export default function AddExpenseScreen() {
             <Ionicons
               name={selectedPayment?.icon || 'wallet-outline'}
               size={20}
-              color={selectedPayment ? '#3369F6' : colors.textSecondary}
+              color={selectedPayment ? colors.primary : colors.textSecondary}
             />
           </View>
           <View style={styles.rowContent}>
@@ -519,7 +525,7 @@ export default function AddExpenseScreen() {
           <Ionicons
             name={activePanel === 'payment' ? 'chevron-up' : 'chevron-down'}
             size={18}
-            color={activePanel === 'payment' ? '#3369F6' : colors.textSecondary}
+            color={activePanel === 'payment' ? colors.primary : colors.textSecondary}
           />
         </Pressable>
 
@@ -627,6 +633,7 @@ export default function AddExpenseScreen() {
 
         {activePanel === 'category' && (
           <CategoryPanel
+            type={type}
             selectedId={selectedCategory?.id || ''}
             onSelect={handleCategorySelect}
             onClose={handlePanelClose}

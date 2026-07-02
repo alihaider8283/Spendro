@@ -85,7 +85,7 @@ export function AmountKeypad({
         <View style={styles.currencyChips}>
           {/* Active currency chip */}
           <Pressable
-            style={[styles.currencyChip, styles.currencyChipActive]}
+            style={[styles.currencyChip, styles.currencyChipActive, { backgroundColor: colors.primary }]}
             onPress={onCurrencyChange}
             accessibilityRole="button"
             accessibilityLabel={`Selected currency ${currency}`}
@@ -169,6 +169,7 @@ export function AmountKeypad({
         <Pressable
           style={({ pressed }) => [
             styles.doneButton,
+            { backgroundColor: colors.primary },
             pressed && styles.doneButtonPressed,
           ]}
           onPress={onDone}

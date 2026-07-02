@@ -131,7 +131,7 @@ export default function TransactionDetailScreen() {
 
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 {/* Header Card with Amount */}
-                <View style={[styles.amountCard, { backgroundColor: '#3369F6'}]}>
+                <View style={[styles.amountCard, { backgroundColor: theme.primary}]}>
                     <ThemedText style={[styles.merchantName, { color: '#FFFFFF' }]}>
                         {transaction.merchant || transaction.title}
                     </ThemedText>
